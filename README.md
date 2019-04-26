@@ -3,7 +3,7 @@ Repo for code and data related to project developing methodology for applying Ha
 
 Steps:
 
-1.  Choose twelve S. aureus genomes from a previous analysis conducted into fusidic acid resistance. Select contigs from the twelve genomes, and a list of kmers and associated p-values from the analysis of all ~1000 genomes.
+1.  Choose twelve S. aureus genomes from a [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance. Select contigs from the twelve genomes, and a list of kmers and associated p-values from the analysis of all ~1000 genomes.
 2. Using the MSSA476 reference genome, reorder the contigs on a genome-by-genome basis with Mauve.
 3. Use Mauve to align the twelve genomes.
 4. Kmerize (into 31mers) the multiple sequence alignment (MSA) and identify the p-value corresponding to each kmer in the MSA.
