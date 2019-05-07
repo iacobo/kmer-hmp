@@ -19,5 +19,5 @@ containing sample names, guids (new sample names), contig files, md5sums for the
 - `fuc_LMM_results_400000kmers_out.txt`
 containing p-values from the LMM analysis for the 400,000 kmers 
 - `fuc_400000_kmers.txt`
-the kmer sequences for the p-values in the above file
+the kmer sequences for the p-values in the above file (i.e. the kmer in line `n` of this file has associated p-value from line `n+1` (due to the header line) in the previous file)
 - plus the 12 contig files.
