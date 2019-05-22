@@ -7,6 +7,7 @@ Script designed to:
     2. align reordered sequences with reference file using Mauve.
     3. calculate the Harmonic Mean p-value for each sliding window
        across the length of the sequences
+    4. Plot the HMP's 'Manatan-plot' style (optionall also plot kmers)
        
     
 Instructions from Mauve website:
@@ -54,22 +55,22 @@ Overview of objects:
                 ---    ---     ---
                        ---      ---
                                  ---
-                 .      .      ....     <-- p-values
-                 .      .
-                        .
+                .      .      ....      <-- p-values
+                .      .
+                       .
                                   
 Explanation of logic:
     
     Each k-mer in the sequences has an associated p-value from the GWAS
-    performed on the sequences testing for correlation with phenotype.
+    performed on the sequences (testing for correlation with phenotype).
     
     This program creates a window of defined length, and travelling laterally
-    across the aligned sequences, takes the Harmonic Mean of the k-mers in
-    said window.
+    across the aligned sequences, takes the Harmonic Mean of the p-values of 
+    the k-mers in said window.
     
-    I.e. in a window of length 10, k-mers of k=5, and 4 aligned sequences
+    i.e. in a window of length 10, k-mers of k=5, and 4 aligned sequences
     (excluding the reference sequence), assuming no gap characters and assuming
-    that the alignment is longer than the window, this contain generate:
+    that the alignment is longer than the window, this will contain:
         
         (10-5+1)*4 = 6*4 = 24 total k-mers
     
@@ -100,7 +101,7 @@ Window overlaps disjoint alignments:
     
     In these instances k-mers are taken from each alignment intersection only.
     
-    I.e. for k=2, window_size=6 in the above example:
+    i.e. for k=2, window_size=6 in the above example:
         
         TG
          GT
@@ -110,7 +111,7 @@ Window overlaps disjoint alignments:
 Neighbouring alignments with different depths:
     
     Some neighbouring alignments may have different numbers of aligned
-    sequences in them. E.g. 3 and 2:
+    sequences in them. e.g. 3 and 2:
     
      [...  ...]
     [ACTG][GTGTA]
@@ -118,26 +119,34 @@ Neighbouring alignments with different depths:
     [TCTG]
     
     In these instances, if a window overlaps an alignment boundary, k-mers are
-    taken from all aligned sequences. E.g. k=3, window_size=6:
+    taken from all aligned sequences. e.g. k=3, window_size=6:
         
      CTG  GTG
      CTG  GTG
      CTG
+    
+    k-mes 'across' neighbouring alignments are not taken, as these may not
+    correspond to real kmers present in the genome (since the ordering of the
+    alignment may not be reflected in reality).
     
 """
 
 import os
 import glob
 import subprocess
+import random
+import datetime
+
+import math
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns; sns.set()
+
 from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from scipy.stats import hmean
-from bisect import bisect
-import random
-import matplotlib.pyplot as plt
 
 
 #####################################
@@ -167,10 +176,11 @@ def grab_latest_alignment(suffixes, results_dir):
     multiple alignment.
     Often multiple successive alignments are created by Mauve, this returns
     the most recent.
+    
     i.e.
-    alignment1
-    alignment2
-    alignment3 <<<
+    C:\\Users\\User\\Documents\\alignment_sequence_X\\alignment1
+    C:\\Users\\User\\Documents\\alignment_sequence_X\\alignment2
+    C:\\Users\\User\\Documents\\alignment_sequence_X\\alignment3   <<< 
     """
     seqs = []
     for suffix in suffixes:
@@ -217,19 +227,6 @@ def align_concat_len(x):
     """Return length of flattened list considering only first sub-elements."""
     return sum(len(sublist[0]) for sublist in x)
 
-def find_2d_idx(cumsum, idx):
-    """Convert a flat index into a nested 2d index for a nested list."""
-    i1 = bisect(cumsum, idx)
-    i2 = (idx - cumsum[i1 - 1]) if i1 > 0 else idx
-    return (i1, i2)
-
-def len_cumsum(x):
-    """Return the cumsum of the lengths of the first element of each sublist."""
-    c = [len(lst[0]) for lst in x]
-    for i in range(1, len(c)):
-        c[i] += c[i - 1]
-    return c
-
 def random_seq(n,alpha='ACGT'):
     """Return random Seq of length n."""
     return ''.join(random.choice(alpha) for _ in range(n))
@@ -246,46 +243,109 @@ def remove_reference(alignments, reference):
         new_alignments.append(new_alignment)
     return new_alignments
 
-def alignment_window(window_size, stagger, alignments):
-    """Given a a multi-alignment file, returns all sub-sequences of each
-    record in each alignment for each 'sliding window' across the alignments.
+
+#############################################################
+## ALTERNATIVE MAIN PROGRAM LOGIC TESTING
+#############################################################
+
+## Alt logic designed to creat DF of p-values per position for reuse of values 
+# for different window plots, and plotting individual kmers Manhattan-plot style
+
+def alignment2df(alignments,k,dictionary,default=np.nan):
+    """Create DataFrame from multi-alignment. Dissects alignment to produce
+    k-mers and given a dictionary of k-mer:p-value creates a row in the dataframe
+    for each position in each sequence with an associated p-value (with respect 
+    to the k-mer whose leftmost basepair starts at that position).
+    
+    Gap characters are ignored for generating k-mers.
+    
+    No p-values are associated to positions which are a gap character.
     """
+    columns = ['kmer','p_val','position','absolute_pos','alignment','sequence']
     
-    # Grab length of concatenated alignments
-    l = align_concat_len(alignments)
+    temp = []
     
-    # Grab cumulative sum of lengths of each alignment in alignments
-    c = len_cumsum(alignments)
+    for i, alignment in enumerate(alignments):
+        surplus = sum(len(alignment[0]) for alignment in alignments[:i])
+        for record in alignment:
+            seq_id = record.id.split("/")[0].split("\\")[-1].split(".")[0]
+            seq_id = record_dict[seq_id]
+            # Each position in sequence gets associated p-value
+            for position, char in enumerate(record):
+                # Position determined by leftmost value of k-mer
+                # If no k-mer starts here (i.e. this pos is a gap char), default (NAN) given
+                #if char = '-':
+                #    temp.append(['', default, position, position+surplus, i, seq_id])
+                if char != '-':
+                    kmer = record[position:].seq.ungap(gap='-')[:k].upper()
+                    pval = dictionary.get(kmer,default)
+                    # Check reverse complement
+                    if pval is default:
+                        kmer = kmer.reverse_complement()
+                        pval = dictionary.get(kmer,default)
+                    if pval is not default: # not elif! checking condition twice
+                        temp.append([str(kmer), pval, position, position+surplus, i, seq_id])
+    
+    # Convert list to dataframe
+    df = pd.DataFrame(data=temp, columns=columns)
+    df = df.set_index(['absolute_pos','alignment','sequence','position'])
+    df = df.sort_index()
+    
+    return df
+
+def get_hmps(df, window_size):
+    """
+    Get hmps for each sliding window.
+    """
+    hmps = []
+    stagger = int(window_size/2)
+    
+    # Grab length of concatenated alignments (largest absolute position, + 1 for 0 indexing)
+    #l = align_concat_len(alignments)
+    l = max(df.index)[0]+1
     
     # Generate start and end indices for each sliding window
     start_indices = np.array(range(0,l,stagger))
     end_indices = start_indices + window_size
     
-    # Generate 2d indices for each window across the alignments
-    starts = [find_2d_idx(c, i) for i in start_indices]
-    ends = [find_2d_idx(c, i) for i in end_indices]
+    # Takes slice of absolute positions (index 0)
+    idx = pd.IndexSlice
+    hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['p_val'].dropna()) for start, end in zip(start_indices,end_indices)])
     
-    # Grab all sub-sequence which intersect with each window.
-    windows = []
-    # Loop through each window's start, end
-    for s, e in zip(starts,ends):
-        window = []
-        start_i, start_j = s
-        end_i, end_j = e
-        # Loop through each alignment which intersects window
-        for i, alignment in enumerate(alignments[start_i:end_i+1]):
-            if i == 0:
-                start = start_j
-            else:
-                start = 0
-            if i == end_i - start_i:
-                end = end_j
-            else:
-                end = len(alignment[0])
-            for record in alignment:
-                window.append(record[start:end])
-        windows.append(window)
-    return windows
+    return hmps
+
+#############################################################
+## Visualisation functions
+#############################################################
+
+def remove_duplicate_legends():
+    """Remove duplicate labels on a matplotlib legend.
+    """
+    handles, labels = plt.gca().get_legend_handles_labels()
+    newLabels, newHandles = [], []
+    for handle, label in zip(handles, labels):
+        if label not in newLabels:
+            newLabels.append(label)
+            newHandles.append(handle)
+    
+    plt.legend(newHandles, newLabels)
+    
+
+def plot_hmps(df, hmps, window_size):
+    """
+    Plot p-values of sliding windows vs window position across sequence.
+    Optionall also plot 'Manhattan Plot' of individual kmer p-values vs
+    kmer position in multi-sequence.
+    """
+    stagger = int(window_size/2)
+        
+    # Sliding windows plot
+    for i, hmp in enumerate(hmps):
+        plt.plot([i*stagger, i*stagger+window_size], [-np.log(hmp), -np.log(hmp)], color=colors[window_size], label=f'{window_size}bp')
+    
+    remove_duplicate_legends()
+    plt.xlabel("Genome position")
+    plt.ylabel("Adjusted Harmonic Mean p-value (-log)")
 
 
 ####################################
@@ -301,8 +361,9 @@ if __name__ == '__main__':
     k = 31
     
     # Sliding window size for analysing kmers
-    window_size = 10000
-    stagger = window_size #int(window_size/2)
+    window_sizes = (100,1000,10000,100000)
+    # INSERT LOGIC TO DETERMINE STAGGER SIZE
+    colors = {10:'purple',100:'blue',1000:'red',10000:'yellow',100000:'green',1000000:'orange'}
     
     # Default value for kmers without associated p-val (if nan, values excluded)
     default = np.nan
@@ -316,40 +377,33 @@ if __name__ == '__main__':
     kmers_file = f'{base_path}fuc_400000_kmers.txt'
     pvals_file = f'{base_path}fuc_LMM_results_400000kmers_out.txt'
     total_kmers_file = f'{base_path}cipro_all_kmer_out.kmer.txt'
+    total_pvals_file = f'{base_path}saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt.'
     
     if not debug:
-    
-        # Load list of kmers as pd series
-        kmers_series = pd.read_csv(kmers_file, header=None, squeeze=True, names=['kmer'])
-        
+        print("Loading k-mers and p-values...")
+        t0 = datetime.datetime.now() 
         # Load p-value info as pd dataframe
-        dfpvals = pd.read_csv(pvals_file, sep='\t')
+        dfpvals = pd.read_csv(total_pvals_file, header=None, names=['p_score'])
         
-        # Load total list of kmers as pd dataframe
-        total_kmers = pd.read_csv(total_kmers_file, header=None, names=['kmer'])
-        # Add default p-value of 1
-        total_kmers['p_score'] = 1    
+        # Load total list of kmers as pd series
+        total_kmers = pd.read_csv(total_kmers_file, header=None, squeeze=True, names=['kmer'])
         
         # Checks on file integrity
-        assert kmers_series.is_unique, "List of kmers is not unique!"
-        assert kmers_series.shape[0] == dfpvals.shape[0], "K-mer file lengths do not match!"
-        assert sum(kmers_series.isin(total_kmers['kmer'])) == kmers_series.shape[0], "Not all kmers extract in full kmers list!"
+        assert total_kmers.is_unique, "List of kmers is not unique!"
+        assert total_kmers.shape[0] == dfpvals.shape[0], "K-mer, p-value file lengths do not match!"
         
-        # Grab only necessary columns
-        dfpvals['kmer'] = kmers_series
-        dfpvals = dfpvals[['kmer','p_score']]
+        # Combine add kmers series as column to p-value DataFrame
+        dfpvals['kmer'] = total_kmers
         
-        # Set indices for update and dictionary conversion
+        # Set index for dictionary conversion
         dfpvals = dfpvals.set_index('kmer')
-        total_kmers = total_kmers.set_index('kmer')
-        
-        # Update total kmer list with pvals from 400k list
-        total_kmers.update(dfpvals)
         
         # Create dictionary of kmers to p-values
-        kmer_pvalues = total_kmers['p_score'].to_dict()
-    
-    
+        kmer_pvalues = dfpvals['p_score'].to_dict()
+        
+        print("K-mers and p-values loaded.")
+        t1 = datetime.datetime.now()
+        print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     
     ############################################
     ## Sequence files
@@ -373,6 +427,8 @@ if __name__ == '__main__':
     os.chdir('C:\\Program Files (x86)\\Mauve 20150226')
     
     if not debug:
+        print("Ordering sequence contigs relative to reference sequence...")
+        t0 = datetime.datetime.now() 
         # Loops through files in directory of '.fa' format
         for draft in grab_fasta_files(drafts_dir):
             draft_filename = draft.split('\\')[-1].rstrip('.fa')
@@ -381,67 +437,85 @@ if __name__ == '__main__':
             
             # Orders contigs of each draft sequence relative to reference
             order_contigs(reference, draft, output_dir, mauve_dir, java_dir)
-    
+        print("All sequences ordered.")
+        t1 = datetime.datetime.now()
+        print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
+        
+        print("Aligning sequences...")
         # Aligns all draft sequences relative to reference
         seqs = grab_latest_alignment(draft_filenames, results_dir)
         align_seqs(reference, seqs, alignment_dir)
+        print("Sequences aligned.")
+        t1 = datetime.datetime.now()
+        print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
         
     # Parse alignments with Biopython
+    print("Loading alignment file...")
+    t0 = datetime.datetime.now() 
     alignments = list(AlignIO.parse(alignment_dir, "mauve"))
     alignments = remove_reference(alignments, reference)
+    print("Alignment file loaded (and reference sequence removed).")
+    t1 = datetime.datetime.now()
+    print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     
-    # Deal with smaller amount for testing
-    if debug:
-        alignments = alignments[:5]
     
-    # Container for harmonic mean p-values
-    hmps = []
-    total_kmers_count = 0
-    unknown_kmers = 0
+    ############################################
+    ## P-Value/Position DataFrame
+    ############################################
     
-    ###############################################################
-    # Create windows
-    windows = alignment_window(window_size, stagger, alignments)
+    # Dictionary for sequence ids
+    # NEED TO NOT USE GLOBALS
+    record_ids = sorted(list(set(record.id.split("/")[0].split("\\")[-1].split(".")[0] for alignment in alignments for record in alignment)))
+    record_dict = {record_id:i for i, record_id in enumerate(record_ids)}
     
-    # Calculate HMP for each window
-    for window in windows:
-        pvalues = []
-        for record in window:
-            for kmer in get_kmers(k,record.seq):
-                total_kmers_count += 1
-                pval = kmer_pvalues.get(str(kmer),default)
-                # Check reverse complement
-                if pval is np.nan:
-                    pval = kmer_pvalues.get(str(kmer.reverse_complement()),default)
-                if pval is np.nan:
-                    unknown_kmers += 1
-                else:
-                    pvalues.append(pval)
-        
-        # Calculate harmonic mean
-        hmp_window = hmean(pvalues)
-        
-        # Add hmp for window to sequence container
-        hmps.append(hmp_window)
-    hmps = np.array(hmps)
+    # Create DF
+    print("Converting alignment file to DataFrame with p-value/position as row...")
+    t0 = datetime.datetime.now() 
+    df = alignment2df(alignments[:50],k,kmer_pvalues)
+    print("Dataframe successfully created.")
+    t1 = datetime.datetime.now()
+    print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     
-    # Stats
-    percent_unknown_kmers = 100*unknown_kmers/total_kmers_count
-    print(f'Proportion of unknown kmers: {percent_unknown_kmers:.2f}%')
-    print(f'Number of unknown kmers: {unknown_kmers}')
-    print(f'Total number of kmers: {total_kmers_count}')
     
-    # Displaying graphs
+    ############################################
+    ## HMPs, Windows, Visualisation
+    ############################################
+    
+    total_sequence_length = l = max(df.index)[0]+1
+    upper_exp = int(math.log10(total_sequence_length))
+    
+    window_sizes = (10**e for e in range(4,upper_exp+1))
+    
     alpha = 5*10**(-8)
-    plt.scatter(np.arange(len(hmps)), -np.log(hmps))
-    plt.plot([0,len(hmps)], [-np.log(alpha), -np.log(alpha)], linestyle='--', color='k')
-    plt.xlabel("Window position")
-    plt.ylabel("Harmonic Mean p-Value")
     
-    plt.close()
+    for window_size in window_sizes:
+        print(f"Generating visualisation for window size {window_size}bp...")
+        t0 = datetime.datetime.now() 
+        stagger = int(window_size/2)
+        
+        # Calculate HMP's for each window size
+        hmps = get_hmps(df,window_size)
+        plot_hmps(df,hmps,window_size)
+        t1 = datetime.datetime.now()
+        print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
+        
+    # Plot kmers Manhattan-plot style (scatter graph)
+    print(f"Generating Manhattan-plot...")
+    t0 = datetime.datetime.now() 
+    plt.scatter(df.index.to_frame()['absolute_pos'], -np.log(df['p_val']))
+    t1 = datetime.datetime.now()
+    print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
+    plt.show()
     
-    for i, hmp in enumerate(hmps[:400]):
-        plt.plot([i*window_size, (i+1)*window_size], [-np.log(hmp), -np.log(hmp)], color=window_size)
-    
-    ###############################################################
-#        
+    # Save image
+    plt.savefig('C:\\Users\\Jacob\\Downloads\\fig.svg')
+        
+        ###############################################################
+        # Stats
+        ###############################################################
+        
+        # Stats
+#        percent_unknown_kmers = 100*unknown_kmers/total_kmers_count
+#        print(f'Proportion of unknown kmers: {percent_unknown_kmers:.2f}%')
+#        print(f'Number of unknown kmers: {unknown_kmers}')
+#        print(f'Total number of kmers: {total_kmers_count}')
