@@ -140,13 +140,15 @@ import datetime
 import math
 import numpy as np
 import pandas as pd
+
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
+
+from scipy.stats import hmean
 
 from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from scipy.stats import hmean
 
 
 #####################################
@@ -232,7 +234,10 @@ def random_seq(n,alpha='ACGT'):
     return ''.join(random.choice(alpha) for _ in range(n))
 
 def remove_reference(alignments, reference):
-    """Removes the reference alignment from a multi-alignment."""
+    """Removes the reference alignment from a multi-alignment. If an alignment
+    consists of only the reference sequence, it replaces it with a gapped
+    sequence of the same length.
+    """
     new_alignments = []
     for alignment in alignments:
         # Include only non-reference records
@@ -273,9 +278,8 @@ def alignment2df(alignments,k,dictionary,default=np.nan):
             # Each position in sequence gets associated p-value
             for position, char in enumerate(record):
                 # Position determined by leftmost value of k-mer
-                # If no k-mer starts here (i.e. this pos is a gap char), default (NAN) given
-                #if char = '-':
-                #    temp.append(['', default, position, position+surplus, i, seq_id])
+                # If no k-mer starts here (i.e. this pos is a gap char), 
+                # default (NAN) given
                 if char != '-':
                     kmer = record[position:].seq.ungap(gap='-')[:k].upper()
                     pval = dictionary.get(kmer,default)
@@ -292,6 +296,32 @@ def alignment2df(alignments,k,dictionary,default=np.nan):
     df = df.sort_index()
     
     return df
+
+def alignment2array(alignments,k,dictionary,default=np.nan):
+    """
+    """
+    length = sum(len(alignment[0]) for alignment in alignments)
+    width = max(len(alignment) for alignment in alignments)
+    array = np.full((length, width), default)
+    
+    for i, alignment in enumerate(alignments):
+        surplus = sum(len(alignment[0]) for alignment in alignments[:i])
+        for j, record in enumerate(alignment):
+            # Each position in sequence gets associated p-value
+            for position, char in enumerate(record):
+                # Position determined by leftmost value of k-mer
+                # If no k-mer starts here (i.e. this pos is a gap char), 
+                # default (NAN) given
+                if char != '-':
+                    kmer = record[position:].seq.ungap(gap='-')[:k].upper()
+                    pval = dictionary.get(kmer,default)
+                    # Check reverse complement
+                    if pval is default:
+                        kmer = kmer.reverse_complement()
+                        pval = dictionary.get(kmer,default)
+                    array[position+surplus][j] = pval
+    
+    return array
 
 def get_hmps(df, window_size):
     """
@@ -311,6 +341,26 @@ def get_hmps(df, window_size):
     # Takes slice of absolute positions (index 0)
     idx = pd.IndexSlice
     hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['p_val'].dropna()) for start, end in zip(start_indices,end_indices)])
+    
+    return hmps
+
+def get_hmps_array(array, window_size):
+    """
+    Get hmps for each sliding window.
+    """
+    hmps = []
+    stagger = int(window_size/2)
+    
+    # Grab length of concatenated alignments (largest absolute position, + 1 for 0 indexing)
+    #l = align_concat_len(alignments)
+    l =  array.shape[0]
+    
+    # Generate start and end indices for each sliding window
+    start_indices = np.array(range(0,l,stagger))
+    end_indices = start_indices + window_size
+    
+    # Takes slice of absolute positions (index 0)
+    hmps = np.array([hmean(array[start:end+1][~np.isnan(array[start:end+1])]) for start, end in zip(start_indices,end_indices)])
     
     return hmps
 
@@ -379,7 +429,11 @@ if __name__ == '__main__':
     total_kmers_file = f'{base_path}cipro_all_kmer_out.kmer.txt'
     total_pvals_file = f'{base_path}saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt.'
     
-    if not debug:
+    # If dictionary in memory...
+    try:
+        kmer_pvalues
+        print("Dictionary pre-loaded.")
+    except NameError:
         print("Loading k-mers and p-values...")
         t0 = datetime.datetime.now() 
         # Load p-value info as pd dataframe
@@ -448,15 +502,18 @@ if __name__ == '__main__':
         print("Sequences aligned.")
         t1 = datetime.datetime.now()
         print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
-        
-    # Parse alignments with Biopython
-    print("Loading alignment file...")
-    t0 = datetime.datetime.now() 
-    alignments = list(AlignIO.parse(alignment_dir, "mauve"))
-    alignments = remove_reference(alignments, reference)
-    print("Alignment file loaded (and reference sequence removed).")
-    t1 = datetime.datetime.now()
-    print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
+    
+    try:
+        alignments
+    except NameError:
+        # Parse alignments with Biopython
+        print("Loading alignment file...")
+        t0 = datetime.datetime.now() 
+        alignments = list(AlignIO.parse(alignment_dir, "mauve"))
+        alignments = remove_reference(alignments, reference)
+        print("Alignment file loaded (and reference sequence removed).")
+        t1 = datetime.datetime.now()
+        print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     
     
     ############################################
@@ -465,33 +522,38 @@ if __name__ == '__main__':
     
     # Dictionary for sequence ids
     # NEED TO NOT USE GLOBALS
-    record_ids = sorted(list(set(record.id.split("/")[0].split("\\")[-1].split(".")[0] for alignment in alignments for record in alignment)))
-    record_dict = {record_id:i for i, record_id in enumerate(record_ids)}
+    try:
+        record_dict
+        df
+    except NameError:
+        record_ids = sorted(list(set(record.id.split("/")[0].split("\\")[-1].split(".")[0] for alignment in alignments for record in alignment)))
+        record_dict = {record_id:i for i, record_id in enumerate(record_ids)}
+        
+        # Create DF
+        print("Converting alignment file to DataFrame with p-value/position as row...")
+        t0 = datetime.datetime.now() 
+        df = alignment2df(alignments[:200],k,kmer_pvalues)
+        print("Dataframe successfully created.")
+        t1 = datetime.datetime.now()
+        print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     
-    # Create DF
-    print("Converting alignment file to DataFrame with p-value/position as row...")
-    t0 = datetime.datetime.now() 
-    df = alignment2df(alignments[:50],k,kmer_pvalues)
-    print("Dataframe successfully created.")
-    t1 = datetime.datetime.now()
-    print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
-    
+    #array = alignment2array(alignments[:50],k,kmer_pvalues)
     
     ############################################
     ## HMPs, Windows, Visualisation
     ############################################
     
-    total_sequence_length = l = max(df.index)[0]+1
+    total_sequence_length = max(df.index)[0]+1
     upper_exp = int(math.log10(total_sequence_length))
+    lower_exp = 4
     
-    window_sizes = (10**e for e in range(4,upper_exp+1))
+    window_sizes = (10**e for e in range(lower_exp,upper_exp))
     
-    alpha = 5*10**(-8)
+    alpha = -np.log(5*10**(-8))
     
     for window_size in window_sizes:
         print(f"Generating visualisation for window size {window_size}bp...")
         t0 = datetime.datetime.now() 
-        stagger = int(window_size/2)
         
         # Calculate HMP's for each window size
         hmps = get_hmps(df,window_size)
@@ -501,14 +563,14 @@ if __name__ == '__main__':
         
     # Plot kmers Manhattan-plot style (scatter graph)
     print(f"Generating Manhattan-plot...")
-    t0 = datetime.datetime.now() 
+    t0 = datetime.datetime.now()
     plt.scatter(df.index.to_frame()['absolute_pos'], -np.log(df['p_val']))
     t1 = datetime.datetime.now()
     print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     plt.show()
     
     # Save image
-    plt.savefig('C:\\Users\\Jacob\\Downloads\\fig.svg')
+    plt.savefig(f'C:\\Users\\Jacob\\Downloads\\fig_{t1}.svg')
         
         ###############################################################
         # Stats
