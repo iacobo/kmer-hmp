@@ -7,9 +7,9 @@ Goal:
 Steps:
 
 1.  Choose twelve S. aureus genomes from a [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance. Select files for:
-  - contigs from each of the twelve genomes
-  - list of k-mers from the analysis of all ~1000 genomes
-  - list of associated p-values for these k-mers
+    - contigs from each of the twelve genomes
+    - list of k-mers from the analysis of all ~1000 genomes
+    - list of associated p-values for these k-mers
 2. Reorder the contigs on a genome-by-genome basis with [Mauve](http://darlinglab.org/mauve/mauve.html) with trespect to the [MSSA476 reference genome](https://www.ncbi.nlm.nih.gov/nuccore/BX571857.1).
 3. Use Mauve to align the twelve genomes into an MSA.
 4. K-merize (into 31-mers) the MSA and identify the p-value corresponding to each kmer in the MSA.
@@ -121,7 +121,7 @@ In these instances, if a window overlaps an alignment boundary, k-mers are taken
 
 ## Mauve instructions
 
->#### Reordering contigs from the command-line (batch mode) 
+>#### [Reordering contigs from the command-line (batch mode)](http://darlinglab.org/mauve/user-guide/reordering.html) 
 >In situations where it is necessary to order contigs in a large number of draft genomes it is often more desirable to automate the process using command-line interfaces and scripts. Mauve Contig Mover supports command-line operation through the Mauve Java JAR file.
 >
 >Given a reference genome file called `reference.gbk` and a draft genome called `draft.fasta`, one would invoke the reorder program with the following syntax:
@@ -130,5 +130,3 @@ In these instances, if a window overlaps an alignment boundary, k-mers are taken
 >
 >The file Mauve.jar is part of the Mauve distribution. On windows systems it can usually be found in `C:\Program Files\Mauve X\Mauve.jar` where `X` is the version of Mauve. On Mac OS X it is located inside the Mauve application. For example, if Mauve has been placed in the OS X applications folder, Mauve.jar can be found at `/Applications/Mauve.app/Contents/Resources/Java/Mauve.jar`. 
 >On Linux, `Mauve.jar` is simply at the top level of the `tar.gz` archive. In the above example command, it will be necessary to specify the full path to the `Mauve.jar` file.
-
--  http://darlinglab.org/mauve/user-guide/reordering.html
