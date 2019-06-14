@@ -16,7 +16,6 @@ Script designed to:
 import os
 import glob
 import subprocess
-import random
 import datetime
 
 import math
@@ -124,14 +123,6 @@ def get_kmers(k, sequence, ignore_gaps=True, upper=True):
             return [sequence[i:i+k] for i in range(length - k + 1)]
     else:
         return []
-
-def align_concat_len(x):
-    """Return length of flattened list considering only first sub-elements."""
-    return sum(len(sublist[0]) for sublist in x)
-
-def random_seq(n,alpha='ACGT'):
-    """Return random Seq of length n."""
-    return ''.join(random.choice(alpha) for _ in range(n))
 
 def sort_multi_alignment_by_reference(multialignment, reference='reference'):
     """Given a multialignment file (multiple alignments), sorts alignments
@@ -391,10 +382,9 @@ def sigfigs(n):
     E.g. 1000 > 1K
     5000000 > 5M
     """
-    if n > 1000000:
-        return f'{n/1000000}M'
-    elif n > 1000:
-        return f'{n/1000}K'
+    if n > 1000000: return f'{n/1000000}M'
+    elif n > 1000: return f'{n/1000}K'
+    else: return f'{n}'
 
 
 ####################################
@@ -417,8 +407,6 @@ if __name__ == '__main__':
     
     # File locations
     base_path = 'C:\\Users\\Jacob\\Downloads\\fusidic_data\\'
-    kmers_file = f'{base_path}fuc_400000_kmers.txt'
-    pvals_file = f'{base_path}fuc_LMM_results_400000kmers_out.txt'
     total_kmers_file = f'{base_path}cipro_all_kmer_out.kmer.txt'
     total_pvals_file = f'{base_path}saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt.'
     
@@ -448,7 +436,7 @@ if __name__ == '__main__':
         # Create dictionary of kmers to p-values
         kmer_pvalues = dfpvals['p_score'].to_dict()
         
-        # CLEAR UO MEMORY ???
+        # CLEAR UP MEMORY ???
         dfpvals = None
         
         print("K-mers and p-values loaded.")
@@ -541,8 +529,6 @@ if __name__ == '__main__':
     ## HMPs, Windows, Visualisation
     ############################################
     
-    fig, ax = plt.subplots()
-    
     # Calculating window sizes - powers of 10 less than total sequence length
     total_sequence_length = max(df.index)[0]
     upper_exp = int(math.log10(total_sequence_length))+1
@@ -551,7 +537,11 @@ if __name__ == '__main__':
     window_sizes = (10**e for e in range(lower_exp,upper_exp))
     
     # Plot HMP windows and Manhattan of kmers on plot.ly
+    print("Calculating HMP's and plotting data to plot.ly...")
+    t0 = datetime.datetime.now() 
     plot_manhattan_plotly(df,window_sizes)
+    t1 = datetime.datetime.now()
+    print(f"Total time: {(t1-t0).total_seconds()}.\n\n")
     
     ###############################################################
     ## Stats
