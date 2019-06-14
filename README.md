@@ -41,7 +41,7 @@ Functionality of script:
 2. Align reordered sequences with reference file using Mauve.
 3. Create a DataFrame storing the k-mer and associated p-value info for each position of each sequence in the alignment.
 3. Calculate the Harmonic Mean p-value for each sliding window across the length of the sequences (for multiple window sizes)
-4. Plot the k-mer and HMP p-values 'Manatan-plot' style
+4. Plot the k-mer and HMP p-values 'Manhattan-plot' style
 
 ### Overview of "sliding window" logic
 
