@@ -121,7 +121,7 @@ k-mers 'across' neighbouring alignments are not taken, as these may not correspo
 >
 >Given a reference genome file called `reference.gbk` and a draft genome called `draft.fasta`, one would invoke the reorder program with the following syntax:
 >
->    java -Xmx500m -cp Mauve.jar org.gel.mauve.contigs.ContigOrderer -output results_dir -ref reference.gbk -draft draft.fasta
+>      java -Xmx500m -cp Mauve.jar org.gel.mauve.contigs.ContigOrderer -output results_dir -ref reference.gbk -draft draft.fasta
 >
 >The file Mauve.jar is part of the Mauve distribution. On windows systems it can usually be found in `C:\Program Files\Mauve X\Mauve.jar` where `X` is the version of Mauve. On Mac OS X it is located inside the Mauve application. For example, if Mauve has been placed in the OS X applications folder, Mauve.jar can be found at `/Applications/Mauve.app/Contents/Resources/Java/Mauve.jar`. 
 >On Linux, `Mauve.jar` is simply at the top level of the `tar.gz` archive. In the above example command, it will be necessary to specify the full path to the `Mauve.jar` file.
