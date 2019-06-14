@@ -2,131 +2,14 @@
 """
 Script designed to:
     
-    1. reorder contigs for multiple draft files against a single 
+    1. Reorder contigs for multiple draft files against a single 
        reference file using Mauve on Windows.
-    2. align reordered sequences with reference file using Mauve.
-    3. calculate the Harmonic Mean p-value for each sliding window
-       across the length of the sequences
-    4. Plot the HMP's 'Manatan-plot' style (optionall also plot kmers)
-       
-    
-Instructions from Mauve website:
-
-        Reordering contigs from the command-line (batch mode)
-        ----------------------------------------------------
-        In situations where it is necessary to order contigs in a large number 
-        of draft genomes it is often more desirable to automate the process 
-        using command-line interfaces and scripts. Mauve Contig Mover supports 
-        command-line operation through the Mauve Java JAR file.
-        
-        Given a reference genome file called “reference.gbk” and a draft genome 
-        called “draft.fasta”, one would invoke the reorder program with the 
-        following syntax:
-        
-        java -Xmx500m -cp Mauve.jar org.gel.mauve.contigs.ContigOrderer -output results_dir -ref reference.gbk -draft draft.fasta
-        
-        The file Mauve.jar is part of the Mauve distribution. On windows 
-        systems it can usually be found in C:\Program Files\Mauve X\Mauve.jar 
-        where X is the version of Mauve. On Mac OS X it is located inside the 
-        Mauve application. For example, if Mauve has been placed in the OS X 
-        applications folder, Mauve.jar can be found at 
-        /Applications/Mauve.app/Contents/Resources/Java/Mauve.jar. 
-        On Linux, Mauve.jar is simply at the top level of the tar.gz archive. 
-        In the above example command, it will be necessary to specify the full 
-        path to the Mauve.jar file.
-
-Source:
-    
-    http://darlinglab.org/mauve/user-guide/reordering.html
-
-
-Overview of objects:
-    
-              [                    ]  <-- `alignments`
-               [XXX,  [XXX,  [XXXX,   <-- `alignment`
-                XXX],  XXX,   XXXX]            
-                       XXX],
-               (        )                  
-                   (        )
-                       (        )
-                           (        )   <-- `window`
-                ---    ---    ---       <-- `kmer`
-                ---    ---     ---
-                       ---    ---
-                               ---
-                .      .      ..        <-- p-values
-                .      .      ..
-                       .
-                                  
-Explanation of logic:
-    
-    Each k-mer in the sequences has an associated p-value from the GWAS
-    performed on the sequences (testing for correlation with phenotype).
-    
-    This program creates a window of defined length, and travelling laterally
-    across the aligned sequences, takes the Harmonic Mean of the p-values of 
-    the k-mers in said window.
-    
-    i.e. in a window of length 10, k-mers of k=5, and 4 aligned sequences
-    (excluding the reference sequence), assuming no gap characters and assuming
-    that the alignment is longer than the window, this will contain:
-        
-        (10-5+1)*4 = 6*4 = 24 total k-mers
-    
-    and thus 24 values of which the Harmonic Mean will be taken.
-    
-Gap characters:
-    
-    If there are gap characters in a sequence, e.g.:
-        
-        ACACAC-GTG
-        
-    Within a given window, the program will ignore the gap characters, thus the
-    k-mers returned for this window (of size 10) for this sequence would be:
-        
-        ACACA
-         CACAC
-          ACACG
-           CACGT
-            ACGTG
-
-Window overlaps disjoint alignments:
-    
-    If there are multiple alignments ordered sequentially, some sliding windows
-    will overlap with the discontinuity between alignments.
-    
-         [...  ...]
-    [ACACGTGT][CGAT]
-    
-    In these instances k-mers are taken from each alignment intersection only.
-    
-    i.e. for k=2, window_size=6 in the above example:
-        
-        TG
-         GT
-             CG
-              GA
-
-Neighbouring alignments with different depths:
-    
-    Some neighbouring alignments may have different numbers of aligned
-    sequences in them. e.g. 3 and 2:
-    
-     [...  ...]
-    [ACTG][GTGTA]
-    [CCTG][GTGGA]
-    [TCTG]
-    
-    In these instances, if a window overlaps an alignment boundary, k-mers are
-    taken from all aligned sequences. e.g. k=3, window_size=6:
-        
-     CTG  GTG
-     CTG  GTG
-     CTG
-    
-    k-mes 'across' neighbouring alignments are not taken, as these may not
-    correspond to real kmers present in the genome (since the ordering of the
-    alignment may not be reflected in reality).
+    2. Align reordered sequences with reference file using Mauve.
+    3. Create a DataFrame storing the k-mer and associated p-value info
+       for each position of each sequence in the alignment.
+    3. Calculate the Harmonic Mean p-value for each sliding window
+       across the length of the sequences (for multiple window sizes)
+    4. Plot the k-mer and HMP p-values 'Manatan-plot' style
     
 """
 
@@ -147,11 +30,8 @@ import plotly.plotly as py
 import plotly.graph_objs as go
 
 from scipy.stats import hmean
-from scipy.integrate import dblquad
 
 from Bio import AlignIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 
 
 #####################################
@@ -231,7 +111,10 @@ def get_kmers(k, sequence, ignore_gaps=True, upper=True):
     If sequence length < k, return empty list.
     """
     if ignore_gaps:
-        sequence = sequence.ungap(gap='-')
+        try:
+            sequence = sequence.ungap(gap='-')
+        except AttributeError:
+            sequence = sequence.replace('-','')
     
     length = len(sequence)
     if length >= k:
@@ -250,57 +133,19 @@ def random_seq(n,alpha='ACGT'):
     """Return random Seq of length n."""
     return ''.join(random.choice(alpha) for _ in range(n))
 
-def remove_reference(alignments, reference):
-    """Removes the reference alignment from a multi-alignment. If an alignment
-    consists of only the reference sequence, it replaces it with a gapped
-    sequence of the same length.
-    """
-    new_alignments = []
-    for alignment in alignments:
-        # Include only non-reference records
-        new_alignment = [record for record in alignment if reference not in record.id]
-        # If reference record only record in alignment, include gap sequence
-        if len(new_alignment) == 0:
-            new_alignment = [SeqRecord(Seq('-'*len(alignment[0])))]
-        new_alignments.append(new_alignment)
-    return new_alignments
-
 def sort_multi_alignment_by_reference(multialignment, reference='reference'):
-    """Given a multialignment file (multiple alignments), sorts
+    """Given a multialignment file (multiple alignments), sorts alignments
     
-    1) primarily on whether alignment contains a record fromt he reference genome
+    1) primarily on whether alignment contains a record from the reference genome
     2) secondarily on id of first element of each alignment.
     """
+    
+    ## TODO: INCLUDE LOGIC TO SORT ON ID OF REFERENCE RECORD
+    ## DON'T ASSUME REFERENCE IS FIRST RECORD
     multialignment.sort(key = lambda x: (all([reference not in record.id for record in x]), int(x[0].id.split('-')[-1])))
 
 #############################################################
-## HMP FUNCS
-#############################################################
-    
-def landau_integrand(t,x,mu,sigma):
-    return (1/(np.pi*sigma))*np.exp(-t*(x-mu)/sigma - (2/np.pi)*t*np.log(t))*np.sin(2*t)
-
-def combinedp(mu,sigma,hmp):
-    return dblquad(landau_integrand, 0, np.inf, 1/hmp, np.inf, args=(mu,sigma))
-
-############################################################
-## TEXT FORMATTING ETC
-############################################################
-
-def sigfigs(n):
-    """Return string formatted integer with K or M for thousands, millions
-    sig figs.
-    
-    E.g. 1000 > 1K
-    5000000 > 5M
-    """
-    if n > 1000000:
-        return f'{n/1000000}M'
-    elif n > 1000:
-        return f'{n/1000}K'
-
-#############################################################
-## CONVERT ALIGNMENTS OBJECT TO DATAFRAME
+## Convert Alignment Object to DataFrame
 #############################################################
 
 def alignment2df(alignments,k,dictionary,default=np.nan):
@@ -343,31 +188,9 @@ def alignment2df(alignments,k,dictionary,default=np.nan):
     
     return df
 
-def alignment2array(alignments,k,dictionary,default=np.nan):
-    """
-    """
-    length = sum(len(alignment[0]) for alignment in alignments)
-    width = max(len(alignment) for alignment in alignments)
-    array = np.full((length, width), default)
-    surplus = 0
-    
-    for alignment in alignments:
-        for j, record in enumerate(alignment):
-            # Each position in sequence gets associated p-value
-            for position, char in enumerate(record):
-                # Position determined by leftmost value of k-mer
-                # If no k-mer starts here (i.e. this pos is a gap char), 
-                # default (NAN) given
-                if char != '-':
-                    kmer = record[position:].seq.ungap(gap='-')[:k].upper()
-                    pval = dictionary.get(kmer,default)
-                    # Check reverse complement
-                    if pval is default:
-                        kmer = kmer.reverse_complement()
-                        pval = dictionary.get(kmer,default)
-                    array[position+surplus][j] = pval
-        surplus += len(record)
-    return array
+#############################################################
+## Harmonic Mean P-Value functions
+#############################################################
 
 def get_hmps(df, window_size, weighted=True):
     """
@@ -399,26 +222,6 @@ def get_hmps(df, window_size, weighted=True):
             hmps.append(adjusted_hmp)
     else:
         hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['p_val']) for start, end in zip(start_indices,end_indices)])
-    return hmps
-
-def get_hmps_array(array, window_size):
-    """
-    Get hmps for each sliding window.
-    """
-    hmps = []
-    stagger = int(window_size/2)
-    
-    # Grab length of concatenated alignments (largest absolute position, + 1 for 0 indexing)
-    #l = align_concat_len(alignments)
-    l =  array.shape[0]
-    
-    # Generate start and end indices for each sliding window
-    start_indices = np.array(range(0,l,stagger))
-    end_indices = start_indices + window_size
-    
-    # Takes slice of absolute positions (index 0)
-    hmps = np.array([hmean(array[start:end+1][~np.isnan(array[start:end+1])]) for start, end in zip(start_indices,end_indices)])
-    
     return hmps
 
 #############################################################
@@ -517,11 +320,6 @@ def plot_manhattan_plotly(df,window_sizes, alpha=0.05, thresh=0.01, ax=None, mil
     thresh_amount = int(thresh*num_tests)
     df_temp = df.nsmallest(thresh_amount, 'p_val')
     
-    ############### EDIT!!!!!!!!!!!!!!!!!!
-    reference_only = False
-    if reference_only:
-        df_temp = df_temp[df_temp.index.get_level_values('sequence') == record_dict['MSSA476']]
-    
     # Alternate colours for alignment blocks
     alignment_colors = df_temp.index.get_level_values('alignment') % 2
     
@@ -585,7 +383,19 @@ def plot_manhattan_plotly(df,window_sizes, alpha=0.05, thresh=0.01, ax=None, mil
     fig = dict(data=data, layout=layout)
     
     py.plot(fig, layout=layout, filename='kmer-test', auto_open=True)
+
+def sigfigs(n):
+    """Return string formatted integer with K or M for thousands, millions
+    sig figs.
     
+    E.g. 1000 > 1K
+    5000000 > 5M
+    """
+    if n > 1000000:
+        return f'{n/1000000}M'
+    elif n > 1000:
+        return f'{n/1000}K'
+
 
 ####################################
 ## Main program
@@ -598,14 +408,8 @@ if __name__ == '__main__':
     
     # kmer k
     k = 31
-    
-    # Sliding window size for analysing kmers
-    window_sizes = (100000)
-    # INSERT LOGIC TO DETERMINE STAGGER SIZE
+
     colors = {10:'springgreen',100:'steelblue',1000:'thistle',10000:'teal',100000:'seagreen',1000000:'turquoise'}
-    
-    # Default value for kmers without associated p-val (if nan, values excluded)
-    default = np.nan
     
     ############################################
     ## kmer files
@@ -750,9 +554,8 @@ if __name__ == '__main__':
     plot_manhattan_plotly(df,window_sizes)
     
     ###############################################################
-    # Stats
+    ## Stats
     ###############################################################
 
     percent_kmers_captured = 100*subset_proportion(df['kmer'], total_kmers)
     print(f'Proportion of kmers present in sequences tested: {percent_kmers_captured:.2f}%')
-    
