@@ -64,25 +64,6 @@ The 3-mers included in each window in the animation are:
 8. TGT, TGT, GTA, GTA
 
 Thus, in e.g. window 1 the HMP of the 6 p-values corresponding to the 6 k-mers it includes will be calculated and assigned position 1.
-
-
-### Overview of objects in main.py
-    
-    [                    ]  <-- `alignments`
-     [XXX,  [XXX,  [XXXX,   <-- `alignment`
-      XXX],  XXX,   XXXX]            
-             XXX],
-     (        )                  
-         (        )
-             (        )
-                 (        )   <-- `window`
-      ---    ---    ---       <-- `kmer`
-      ---    ---     ---
-             ---    ---
-                     ---
-      .      .      ..        <-- p-values
-      .      .      ..
-             .
     
 ### Handling of gap characters 
     
@@ -107,7 +88,7 @@ If there are multiple alignments ordered sequentially, some sliding windows will
 
 In these instances k-mers are taken from each alignment intersection only.
 
-i.e. for k=2, window_size=6 in the above example:
+i.e. for `k=2`, `window_size=6` in the above example:
 
     TG
      GT
