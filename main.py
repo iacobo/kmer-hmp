@@ -9,8 +9,7 @@ Script designed to:
        for each position of each sequence in the alignment.
     3. Calculate the Harmonic Mean p-value for each sliding window
        across the length of the sequences (for multiple window sizes)
-    4. Plot the k-mer and HMP p-values 'Manatan-plot' style
-    
+    4. Plot the k-mer and HMP p-values 'Manhattan-plot' style
 """
 
 import os
@@ -21,21 +20,21 @@ import datetime
 import math
 import numpy as np
 import pandas as pd
+from scipy.stats import hmean
 
+import plotly.plotly as py
+import plotly.graph_objs as go
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
-import plotly.plotly as py
-import plotly.graph_objs as go
-
-from scipy.stats import hmean
 
 from Bio import AlignIO
+from Bio import Entrez
 
 
-#####################################
-## MAUVE alignment reading functions
-#####################################
+##########################################
+## MAUVE alignment manipulation  functions
+##########################################
 
 def order_contigs(reference, draft, output_dir, mauve_dir, java_dir='java'):
     """Call Mauve to reorder the contigs of a draft sequence relative to
@@ -89,6 +88,27 @@ def grab_fasta_files(location):
 #####################################
 ## Sequence manipulation functions
 #####################################
+
+def download_genome(search_term, directory, filetype, email):
+    """Download genome from NCBI to given directory.
+    Must provide email address to Entrez.
+    Return location of downloaded file.
+    """
+
+    Entrez.email = email
+    
+    handle = Entrez.esearch(db='nucleotide', term=search_term)
+    genome_id = Entrez.read(handle)['IdList'][0]
+    record = Entrez.efetch(db="nucleotide", id=genome_id, rettype=filetype, retmode="text")
+    
+    filename = f'{directory}Record_{genome_id}.{filetype}'
+    
+    print(f'Writing: {filename}')
+    with open(filename, 'w') as f:
+        f.write(record.read())
+    handle.close()
+    
+    return filename
 
 def subset_proportion(subset, completeset):
     """Given a subset, returns the relative size of the subset compared to
@@ -303,7 +323,7 @@ def plot_manhattan(df, alpha=0.05, thresh=0.001, ax=None, millions=True):
         ax.set_xticklabels(xlabels)
 
 
-def plot_manhattan_plotly(df,window_sizes, alpha=0.05, thresh=0.01, ax=None, millions=True):
+def plot_manhattan_plotly(df, window_sizes, alpha=0.05, thresh=0.01):
     """Plot manhattan plot to plotly interactive graph.
     """
     num_tests = len(df)
@@ -330,8 +350,7 @@ def plot_manhattan_plotly(df,window_sizes, alpha=0.05, thresh=0.01, ax=None, mil
         opacity = 0.5,
         marker = dict(color = alignment_colors, 
                       colorscale = [[0.0,'grey'],[1.0,'skyblue']]),
-        name = '31-mer'
-    )
+        name = '31-mer')
     
     data = [kmers]
     
@@ -399,7 +418,12 @@ if __name__ == '__main__':
     # kmer k
     k = 31
 
-    colors = {10:'springgreen',100:'steelblue',1000:'thistle',10000:'teal',100000:'seagreen',1000000:'turquoise'}
+    colors = {10:'springgreen',
+              100:'steelblue',
+              1000:'thistle',
+              10000:'teal',
+              100000:'seagreen',
+              1000000:'turquoise'}
     
     ############################################
     ## kmer files
@@ -408,7 +432,7 @@ if __name__ == '__main__':
     # File locations
     base_path = 'C:\\Users\\Jacob\\Downloads\\fusidic_data\\'
     total_kmers_file = f'{base_path}cipro_all_kmer_out.kmer.txt'
-    total_pvals_file = f'{base_path}saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt.'
+    total_pvals_file = f'{base_path}saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt'
     
     # If dictionary in memory...
     try:
@@ -418,10 +442,10 @@ if __name__ == '__main__':
         print("Loading k-mers and p-values...")
         t0 = datetime.datetime.now() 
         # Load p-value info as pd dataframe
-        dfpvals = pd.read_csv(total_pvals_file, header=None, names=['p_score'])
+        dfpvals = pd.read_csv(total_pvals_file, names=['p_score'])
         
         # Load total list of kmers as pd series
-        total_kmers = pd.read_csv(total_kmers_file, header=None, squeeze=True, names=['kmer'])
+        total_kmers = pd.read_csv(total_kmers_file, names=['kmer'], squeeze=True)
         
         # Checks on file integrity
         assert total_kmers.is_unique, "List of kmers is not unique!"
@@ -446,6 +470,20 @@ if __name__ == '__main__':
     ############################################
     ## Sequence files
     ############################################
+    
+    # Download reference genome
+    base_path = 'C:\\Users\\Jacob\\Downloads\\fusidic_data\\'
+    searches = ['staphylococcus[orgn]','MSSA476 complete genome[title]','NC_002953.3[accession]']
+    search_term = ' AND '.join(searches)
+    filetype = 'fasta'
+    email = 'jacob.armstrong@bdi.ox.ac.uk'
+    output_dir = f'{base_path}reference_genome'
+    
+    # Download reference file if not existing
+    if debug:
+        reference = f'{base_path}reference_genome\\MSSA476.fasta'
+    else:
+        reference = download_genome(search_term, output_dir, filetype, email)
 
     # Locations of executables to run in cmd
     # Note: double quotes necessary for whitespace in directory names
@@ -453,7 +491,6 @@ if __name__ == '__main__':
     mauve_dir = '"C:\\Program Files (x86)\\Mauve 20150226\\Mauve.jar"'
     
     # Seq files to reorder contigs of
-    reference = f'{base_path}reference_genome\\MSSA476.fasta'
     drafts_dir = f'{base_path}fa_files\\'
     results_dir = f'{base_path}ordered_contigs\\'
     alignment_filename = f'{base_path}alignment\\alignment.xmfa'
