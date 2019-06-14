@@ -73,15 +73,17 @@ Thus, in e.g. window 1 the HMP of the 6 p-values corresponding to the 6 k-mers i
     
 If there are gap characters in a sequence, e.g.:
 
-    ACACAC-GTG
+    ACA-CACGTG
 
-Within a given window, the program will ignore the gap characters, thus the k-mers returned for this window (of size 10) for this sequence would be:
+the program will ignore the gap characters, thus the k-mers returned for this window (of size 10) for this sequence would be:
 
     ACACA
      CACAC
       ACACG
-       CACGT
-        ACGTG
+        CACGT
+         ACGTG
+
+Note that no value is associated to position 4.
 
 ### What happens when a window overlaps multiple alignments?
 
@@ -94,10 +96,10 @@ In these instances k-mers are taken from each alignment intersection only.
 
 i.e. for `k=2`, `window_size=6` in the above example:
 
-    TG
-     GT
-         CG
-          GA
+          TG   CG
+           GT   GA
+
+K-mers 'across' neighbouring alignments are not considered, as these may not correspond to real k-mers present in the genome (since the ordering of the alignment may not be reflected in reality). E.g. in this instance, the (possibly fictional) inter-alignment k-mer `TC` is not recognised.
 
 ### What happens when the overlapped alignments have different depths (numbers of sequences in them)?
     
@@ -113,8 +115,6 @@ In these instances, if a window overlaps an alignment boundary, k-mers are taken
      CTG  GTG
      CTG  GTG
      CTG
-
-k-mers 'across' neighbouring alignments are not taken, as these may not correspond to real kmers present in the genome (since the ordering of the alignment may not be reflected in reality).
 
 ---
 
