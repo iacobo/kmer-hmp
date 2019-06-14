@@ -80,8 +80,9 @@ the program will ignore the gap characters, thus the k-mers returned for this wi
     ACACA
      CACAC
       ACACG
-        CACGT
-         ACGTG
+      
+       CACGT
+        ACGTG
 
 Note that no value is associated to position 4.
 
