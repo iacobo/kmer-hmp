@@ -1,5 +1,7 @@
 # kmer-hmp
 
+## Overview of project
+
 Goal:
 
 - Develop method for applying Harmonic Mean P-Value to a multiple sequence alignment (MSA)
@@ -17,33 +19,41 @@ Steps:
 
 ---
 
+## Data
 
-## /fusidic_data
+### /fusidic_data
 
 This folder contains the files:
 
 - `fusidic_acid_staph992_12_genome_subset_for_jacob_with_paths.txt`
 containing sample names, guids (new sample names), contig files, md5sums for the contig files, and phenotypes for fusidic acid resistance
 - `cipro_all_kmer_out.kmer.txt`
-the k-mer sequences
+list of k-mer sequences
 - `saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt`
-p-values from the LMM analysis for the above k-mers (identified on a row-number basis)
+list of p-values from the LMM analysis for the above k-mers (identified on a row-number basis)
 - the 12 contig files
-- the reference file downloaded from ...
+- the reference file downloaded from Entrez
 
 ---
 
-## main.py
+## Scripts
 
-Functionality of script:
-    
+### build_msa_mauve.py
+
 1. Reorder contigs for multiple draft files against a single reference file using Mauve on Windows.
 2. Align reordered sequences with reference file using Mauve.
-3. Create a DataFrame storing the k-mer and associated p-value info for each position of each sequence in the alignment.
-3. Calculate the Harmonic Mean p-value for each sliding window across the length of the sequences (for multiple window sizes)
-4. Plot the k-mer and HMP p-values 'Manhattan-plot' style
 
-### Overview of "sliding window" logic
+### build_kmer_pval_dict.py
+
+3. Create dictionary of `{k-mers: p-values}` from static files
+
+### main.py    
+
+4. Create a DataFrame storing the k-mer and associated p-value info for each position of each sequence in the alignment.
+5. Calculate the Harmonic Mean p-value for each sliding window across the length of the sequences (for multiple window sizes)
+6. Plot the k-mer and HMP p-values 'Manhattan-plot' style
+
+#### Overview of "sliding window" logic
 
 Each k-mer in the sequences has an associated p-value from the GWAS performed on the sequences (testing for correlation with phenotype).
 
@@ -69,7 +79,7 @@ The 3-mers included in each window in the animation are:
 
 Thus, in e.g. window 1 the HMP of the 6 p-values corresponding to the 6 k-mers it includes will be calculated and assigned position 1.
     
-### Handling of gap characters 
+#### Handling of gap characters 
     
 If there are gap characters in a sequence, e.g.:
 
@@ -86,7 +96,7 @@ the program will ignore the gap characters, thus the k-mers returned for this wi
 
 Note that no value is associated to position 4.
 
-### What happens when a window overlaps multiple alignments?
+#### What happens when a window overlaps multiple alignments?
 
 If there are multiple alignments ordered sequentially, some sliding windows will overlap with the discontinuity between alignments.
 
@@ -102,7 +112,7 @@ i.e. for `k=2`, `window_size=6` in the above example:
 
 K-mers 'across' neighbouring alignments are not considered, as these may not correspond to real k-mers present in the genome (since the ordering of the alignment may not be reflected in reality). E.g. in this instance, the (possibly fictional) inter-alignment k-mer `TC` is not recognised.
 
-### What happens when the overlapped alignments have different depths (numbers of sequences in them)?
+#### What happens when the overlapped alignments have different depths (numbers of sequences in them)?
     
 Some neighbouring alignments may have different numbers of aligned sequences in them. e.g. 3 and 2:
 
