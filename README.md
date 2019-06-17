@@ -17,7 +17,6 @@ Steps:
 4. K-merize (into 31-mers) the MSA and identify the p-value corresponding to each kmer in the MSA.
 5. Compute HMPs for overlapping sliding windows at different scales, e.g. 10bp, 100bp, 1kb, 10kb, 100kb, 1Mb. Suggestion: stagger each sliding window by about 50% of its length.
 
----
 
 ## Data
 
@@ -34,7 +33,6 @@ list of p-values from the LMM analysis for the above k-mers (identified on a row
 - the 12 contig files
 - the reference file downloaded from Entrez
 
----
 
 ## Scripts
 
@@ -127,7 +125,6 @@ In these instances, if a window overlaps an alignment boundary, k-mers are taken
      CTG  GTG
      CTG
 
----
 
 ## Mauve instructions
 
