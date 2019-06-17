@@ -2,11 +2,11 @@
 
 ## Overview of project
 
-Goal:
+#### Goal:
 
 - Develop method for applying Harmonic Mean P-Value to a multiple sequence alignment (MSA)
 
-Steps:
+#### Steps:
 
 1.  Choose twelve S. aureus genomes from a [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance. Select files for:
     - contigs from each of the twelve genomes
@@ -36,16 +36,16 @@ list of p-values from the LMM analysis for the above k-mers (identified on a row
 
 ## Scripts
 
-### build_msa_mauve.py
+### `build_msa_mauve.py`
 
 1. Reorder contigs for multiple draft files against a single reference file using Mauve on Windows.
 2. Align reordered sequences with reference file using Mauve.
 
-### build_kmer_pval_dict.py
+### `build_kmer_pval_dict.py`
 
 3. Create dictionary of `{k-mers: p-values}` from static files
 
-### main.py    
+### `main.py`
 
 4. Create a DataFrame storing the k-mer and associated p-value info for each position of each sequence in the alignment.
 5. Calculate the Harmonic Mean p-value for each sliding window across the length of the sequences (for multiple window sizes)
