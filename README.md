@@ -4,7 +4,7 @@
 
 #### Goal:
 
-- Develop method for applying Harmonic Mean P-Value to a multiple sequence alignment (MSA)
+- Develop method for applying [Harmonic mean *p*-value](https://en.wikipedia.org/wiki/Harmonic_mean_p-value) ([paper](https://www.pnas.org/content/116/4/1195)) to a multiple sequence alignment (MSA)
 
 #### Steps:
 
