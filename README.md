@@ -62,7 +62,7 @@ Example:
 - window size = 4
 - k = 3
 
-![Sliding windows animation](https://github.com/ja-ox/kmer-hmp/blob/df-branch/images/sliding_windows_animation.gif)
+![Sliding windows animation](https://github.com/ja-ox/kmer-hmp/blob/master/images/sliding_windows_animation.gif)
 
 The 3-mers included in each window in the animation are:
 
