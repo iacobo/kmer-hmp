@@ -254,22 +254,28 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
     data.append(kmers)
     
     # Colour-map for different window_sizes
-    colors = [f'hsl({h},50%,50%)' for h in np.linspace(0, 360, len(window_sizes))]
+    # +1 to ensure start color != end color
+    colors = [f'hsl({h},50%,50%)' for h in np.linspace(0, 360, len(window_sizes)+1)]
     
     # HMP windows over graph
     for j, window_size in enumerate(window_sizes):
         hmps = get_hmps(df,window_size)
         stagger = int(window_size/2)
+        name = f'{sigfigs(window_size)} bp'
         # Shift necessary if not starting at basepair 0
         shift = min(df.index)[0]
+        showlegend = True
         for i, hmp in enumerate(hmps):
-            windows = go.Scattergl(x = [i*stagger+shift, i*stagger+window_size+shift],
-                                   y = [-np.log10(hmp), -np.log10(hmp)],
-                                   mode = 'lines',
-                                   name = f'{sigfigs(window_size)} bp',
-                                   marker = dict(color=colors[j]),
-                                   showlegend = (i==0)) # Hide duplicate legends
+            windows = go.Scatter(x = [i*stagger+shift, i*stagger+window_size+shift],
+                                 y = [-np.log10(hmp), -np.log10(hmp)],
+                                 mode = 'lines',
+                                 line = dict(color=colors[j]),
+                                 name = name,
+                                 legendgroup = name,
+                                 showlegend = showlegend)
             data.append(windows)
+            # Hide duplicate legends
+            showlegend = False
     
     layout = dict(title='31-mer p-values for multi-alignment of Staph a.',
                   xaxis=dict(title='Genome position'),
@@ -286,9 +292,18 @@ def sigfigs(n):
     E.g. 1000 > 1K
     5000000 > 5M
     """
-    if n > 1000000: return f'{n/1000000}M'
-    elif n > 1000: return f'{n/1000}K'
-    else: return f'{n}'
+    if n >= 1000000: 
+        if (n/1000000).is_integer():
+            return f'{int(n/1000000)}M'
+        else:
+            return f'{n/1000000:.1f}M'
+    elif n >= 1000: 
+        if (n/1000).is_integer():
+            return f'{int(n/1000)}K'
+        else:
+            return f'{n/1000:.1f}K'
+    else: 
+        return f'{n}'
 
 
 ####################################
@@ -306,7 +321,7 @@ def main(k, alignments, kmer_pvalues, df=None):
     record_dict = {record_id:i for i, record_id in enumerate(record_ids)}
     record_dict_reverse = {i:record_id for i, record_id in enumerate(record_ids)}
     
-    if not df:
+    if df is None:
         # Create DF
         print('Converting alignment file to DataFrame with p-value/position as row...')
         t0 = datetime.datetime.now() 
