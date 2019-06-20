@@ -2,7 +2,7 @@
 """
 Script to:
     
-    1. Determine minimum number of genomes required to encapsulate >= x% of all
+    1. Determine smallest subset of genomes required to encapsulate >= x% of all
        k-mers present in complete genome set.
        
 Effectively a set covering problem.
