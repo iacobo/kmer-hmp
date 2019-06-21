@@ -13,6 +13,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+def sample_file(x,y):
+    """Return DataFrame of size (1,y) with each element a random binary string
+    of length x.
+    """
+    bin_seq = np.random.randint(2, size=(x,))
+    df = pd.DataFrame([''.join(map(str, bin_seq)) for _ in range(y)], columns=['bin'])
+    return df
+
 base_path = 'C:\\Users\\Jacob\\Downloads\\fusidic_data\\'
 patterns = f'{base_path}patternindex\\cipro_all_kmer_out.patternKey.txt' 
 indices = f'{base_path}patternindex\\cipro_all_kmer_out.patternIndex.txt'
@@ -21,49 +29,50 @@ load_file = True
 
 if load_file:
     dft = pd.read_csv(patterns, names=['bin']) # Dataframe where columns are genome presence, rows are k-mers
+    
     pattern_count = len(dft)
     genome_count = len(dft['bin'].values[0])
     
-    # Testing, only consider first n genomes (not enough RAM to deal with all ~1000 at once, ~400 is memory limit
-    n = 390
-    i = 4
-    dft['bin'] = dft['bin'].str[(i-1)*n:i*n]
-    
-    ## TESTING
-    #dft = pd.DataFrame([''.join(map(str, np.random.randint(2, size=(n,))))for x in range(100)], columns=['bin'])
-    
+    # Testing, only consider n genomes (not enough RAM to deal with all ~1000 at once, ~400 is memory limit
+    n = 450
+    start = 260
+    stop = 260+n
+    dft['bin'] = dft['bin'].str[start:stop]
+    print('Dataframe slice taken.')
     # Remove any trailing spaces
     dft['bin'] = dft['bin'].str.rstrip()
     #Convert single string column to multiple binary columns
     dft = dft['bin'].apply(lambda x: pd.Series(list(x)))
+    print('Binary string converted to columns.')
     # Convert strings to ints
     dft = dft.apply(pd.to_numeric)
+    print('Column types converted to numeric.')
     
     #Transpose dataframe to get columns as kmers and rows as genomes
     dft = dft.T
 
-kmer_count = [0]
-proportion = 0.9
+kmer_cumcounts = [0]
+proportion = 0.95
 threshold = proportion*len(dft.columns)
 indices = []
 
-print(dft)
+print('DataFrame loaded.')
 
-while kmer_count[-1] < threshold:
+while kmer_cumcounts[-1] < threshold:
     sums =  dft.sum(axis=1, skipna=True)
     try:
         row = dft.loc[[sums.idxmax()]].iloc[[0]] # ONLY GRAB ONE ROW (multiple lines may have same sum)
         index = row.index[0]
         indices.append(index)
         print('\n', row)
-        columns = row.loc[:, (row == 0).any()].columns
         
         # Update DataFrame for next iteration
-        dft = dft[columns] # Include only good columns
-        dft = dft.loc[dft.index != index] # exclude selected row
+        column_mask = np.logical_not(row).values[0] # Exclude columns in present row
+        row_mask = dft.index != index # Exclude present row
+        dft = dft.loc[row_mask,column_mask]
         
-        kmer_count.append(kmer_count[-1] + sums.max())
-        print(f'Number of k-mers covered: {kmer_count[-1]}')
+        kmer_cumcounts.append(kmer_cumcounts[-1] + sums.max())
+        print(f'Number of k-mers covered: {kmer_cumcounts[-1]}')
     except ValueError:
         print("No further novel k-mers present in this iteration.")
         break
@@ -71,9 +80,9 @@ while kmer_count[-1] < threshold:
 print('-----')
 print(f'Covering set row numbers: {indices}')
 
-plt.plot(range(len(kmer_count)), np.array(kmer_count)/pattern_count) # Remove hardcoding of length
-plt.plot([0,len(kmer_count)], [proportion, proportion], 'r--')
+plt.plot(range(len(kmer_cumcounts)), np.array(kmer_cumcounts)/pattern_count) # Remove hardcoding of length
+plt.plot([0,len(kmer_cumcounts)], [proportion, proportion], 'r--')
 plt.xlabel(f'Number of genomes ({pattern_count} total)')
 plt.ylabel('Proportion of k-mer patterns covered')
 plt.title('Set covering: minimum number of genomes required to capture x% of all k-mers')
-plt.text(0,-0.3,f'Note: only considering {i}th {n} genomes. Global performance may be better.')
+plt.text(0, -0.3, f'Note: only considering {n} genomes ({start} - {stop}). Global performance may be better.')
