@@ -1,4 +1,4 @@
-#Set Cover Problem
+# Set Cover Problem
 
 Algorithm to select smallest subset of genomes from GWAS which contain > x% of total unique k-mers appearing in complete set of genomes.
 
