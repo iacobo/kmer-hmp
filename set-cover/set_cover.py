@@ -14,54 +14,77 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+# TODO: Weighted version. Change DF to have n instead of 1 for each pattern.
+
 def sample_file(x,y):
     """Return DataFrame of size (1,y) with each element a random binary string
     of length x.
     """
-    bin_seq = np.random.randint(2, size=(x,))
-    df = pd.DataFrame([''.join(map(str, bin_seq)) for _ in range(y)], columns=['bin'])
+    df = pd.DataFrame([''.join(map(str, np.random.randint(2, size=(x,)))) for _ in range(y)], columns=['bin'])
     return df
 
 if __name__ == '__main__':
     
     base_path = 'C:\\Users\\Jacob\\Downloads\\fusidic_data\\'
     patterns = f'{base_path}patternindex\\cipro_all_kmer_out.patternKey.txt' 
-    indices = f'{base_path}patternindex\\cipro_all_kmer_out.patternIndex.txt'
+    pattern_index = f'{base_path}patternindex\\cipro_all_kmer_out.patternIndex.txt'
     
     load_file = True
     whitespace = False
+    weighted = True
     
     # Load Patterns file as DataFrame
     if load_file:
-        dft = pd.read_csv(patterns, names=['bin']) # Dataframe where columns are genome presence, rows are k-mers
+        dft = pd.read_csv(patterns, names=['bin']) # Dataframe where columns are genome presence, rows are k-mer patterns
         
         assert max(dft['bin'].apply(len)) == min(dft['bin'].apply(len)), "Not all patterns of same length!"
         
         pattern_count = len(dft)
         genome_count = len(dft['bin'].values[0])
         
-        # Testing, only consider n genomes (not enough RAM to deal with all ~1000 at once, ~400 is memory limit
+        # Only consider n genomes (not enough RAM to deal with all ~1000 at once, ~400 is memory limit
         n = 450
-        start = 406
-        stop = start+n
+        start = 542 - n
+        stop = 542
         dft['bin'] = dft['bin'].str[start:stop]
         print('Dataframe slice taken.')
+        
         if whitespace:
             # Remove any trailing spaces
             dft['bin'] = dft['bin'].str.rstrip()
+        
         # Split string column into single-char columns
         dft = dft['bin'].apply(lambda x: pd.Series(list(x)))
         print('Binary string converted to columns.')
+        
         # Convert '0', '1' to ints
         dft = dft.apply(pd.to_numeric)
         print('Column types converted to numeric.')
         
+        # Weighted version
+        if weighted:
+            patinddf = pd.read_csv(pattern_index, names=['i'])
+            weights = patinddf['i'].value_counts().sort_index()
+            
+            assert len(dft) == len(weights), "Index file does not match patterns file!"
+            # Times row i by weight i  (1 > i, 0 > 0)
+            dft = dft.multiply(weights, axis=0)
+            print("Weights applied.")
+        
         #Transpose dataframe to get columns as kmers and rows as genomes
         dft = dft.T
     
+    # Initialise cumulative counts at 0
     kmer_cumcounts = [0]
-    proportion = 0.95
-    threshold = proportion*len(dft.columns)
+    proportion = 0.9
+    
+    if weighted:
+        total = sum(weights)
+    else:
+        total = pattern_count
+    
+    threshold = proportion*total
+        
     indices = []
     
     print('DataFrame loaded.')
@@ -93,9 +116,10 @@ if __name__ == '__main__':
     print(f'Covering set row numbers: {indices}')
     
     # Plot coverage curve
-    plt.plot(range(len(kmer_cumcounts)), np.array(kmer_cumcounts)/pattern_count) # Remove hardcoding of length
+    plt.plot(range(len(kmer_cumcounts)), np.array(kmer_cumcounts)/total) # Remove hardcoding of length
     plt.plot([0,len(kmer_cumcounts)], [proportion, proportion], 'r--')
-    plt.xlabel(f'Number of genomes ({pattern_count} total)')
-    plt.ylabel('Proportion of k-mer patterns covered')
-    plt.title('Set covering: minimum number of genomes required to capture x% of all k-mers')
-    plt.text(0, -0.3, f'Note: only considering {n} genomes ({start} - {stop}). Global performance may be better.')
+    plt.xlabel(f'Number of genomes ({genome_count} total)')
+    plt.ylabel(f'Proportion of k-mer (patterns) covered \n({total} total)')
+    plt.title('Set covering')
+    plt.suptitle('Minimum number of genomes required to capture y% of all k-mers')
+    plt.text(0, -0.35, f'Note: only considering {n} genomes ({start} - {stop}). \nGlobal performance may be better.')
