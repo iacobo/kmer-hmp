@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Script designed to:
-
     1. Create a DataFrame storing the k-mer and associated p-value info
        for each position of each sequence in the alignment.
     2. Calculate the Harmonic Mean p-value for each sliding window
@@ -11,6 +9,7 @@ Script designed to:
 
 import os
 import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -356,18 +355,22 @@ def main(k, alignments, kmer_pvalues, df=None):
     print(f'Proportion of k-mers present in sequences tested: {percent_kmers_captured:.2f}%')
     
     return df
-    
+
 
 if __name__ == '__main__':
-    mauve_dir = 'C:\\Program Files (x86)\\Mauve 20150226'
-    base_path = 'C:\\Users\\Jacob\\Downloads\\fusidic_data\\'
-    reference = f'{base_path}reference_genome\\MSSA476.fasta'
+    mauve_dir = Path('C:/Program Files (x86)/Mauve 20150226')
+    base_path = Path('C:/Users/Jacob/Downloads/fusidic_data')
+    reference = base_path / 'genomes/reference_genome/Record_49484912.fasta'
+    kmers = base_path / 'static_files/fusidic_acid_kmers.txt'
+    pvals = base_path / 'static_files/fusidic_acid_pvals.txt'
     
     os.chdir(base_path)
+    
     print('Loading k-mer/p-values dictionary...')
     t0 = datetime.datetime.now() 
-    kmer_pvalues = build_kmer_pval_dict.main(base_path=base_path)
+    kmer_pvalues = build_kmer_pval_dict.main(kmers, pvals)
     t1 = datetime.datetime.now()
     print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
-    alignments = build_msa_mauve.main(base_path=base_path, reference=reference, mauve_dir=mauve_dir)
+    
+    alignments = build_msa_mauve.main(base_path=base_path / 'genomes', reference=reference, mauve_dir=mauve_dir)
     df = main(31, alignments, kmer_pvalues)
