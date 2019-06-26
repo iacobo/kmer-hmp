@@ -17,20 +17,27 @@ from pathlib import Path
 
 from Bio import AlignIO, Entrez
 
-def order_contigs(reference, draft, output_dir, mauve_dir, java_dir='java'):
+def order_contigs(reference, draft, output_dir, mauve_dir, java_dir='java', debug=False):
     """Call Mauve to reorder the contigs of a draft sequence relative to
     a reference sequence.
     Save results to `output_dir`.
     """
-    command = f'{java_dir} -Xmx500m -cp {mauve_dir} org.gel.mauve.contigs.ContigOrderer -output {output_dir} -ref {reference} -draft {draft}'
-    subprocess.call(command)
+    # Double quotes to escape spaces in directory name
+    command = f'"{java_dir}" -Xmx500m -cp "{mauve_dir}" org.gel.mauve.contigs.ContigOrderer -output {output_dir} -ref {reference} -draft {draft}'
+    if debug:
+        print(command)
+    else:
+        subprocess.call(command)
     
-def align_seqs(reference, sequences, output='alignment.xmfa'):
+def align_seqs(reference, sequences, output='alignment.xmfa', debug=False):
     """Align [multiple] sequences to a reference sequence using Mauve.
     """
     command = f'progressiveMauve --output={output} {reference} '
     command += ' '.join(map(str, sequences))
-    subprocess.call(command)
+    if debug:
+        print(command)
+    else:
+        subprocess.call(command)
     
 def grab_latest_alignment(suffixes, results_dir):
     """ Returns a list of file locations of the reordered FASTA files for
@@ -106,6 +113,8 @@ def main(base_path=Path(''), reference=None, reorder=False, mauve_dir=Path('')):
     search_term = ' AND '.join(searches)
     
     output_dir = base_path / 'reference_genome'
+    # Create folder
+    Path.mkdir(output_dir, exist_ok=True)
     
     # Download reference file if not specified
     if reference is None:
@@ -116,9 +125,12 @@ def main(base_path=Path(''), reference=None, reorder=False, mauve_dir=Path('')):
     mauve = Path('C:/Program Files (x86)/Mauve 20150226/Mauve.jar')
     
     # MSA file to reorder contigs of
-    drafts_dir = base_path / 'fa_files'
+    drafts_dir = base_path / 'draft_genomes'
     results_dir = base_path / 'ordered_contigs'
     alignment_filename = base_path / 'alignment/alignment.xmfa'
+    # Create folders
+    Path.mkdir(base_path / 'alignment', exist_ok=True)
+    Path.mkdir(results_dir, exist_ok=True)
     
     # Reordering genomes relative to reference
     if reorder:
@@ -132,7 +144,7 @@ def main(base_path=Path(''), reference=None, reorder=False, mauve_dir=Path('')):
         # Loops through files in directory of '.fa' format
         for draft in grab_fasta_files(drafts_dir):
             # i.e. selects name from directory/stem.extension
-            draft_filename = Path(draft).stem
+            draft_filename = draft.stem
             draft_filenames.append(draft_filename)
             output_dir = results_dir / f'alignment_{draft_filename}'
             
@@ -165,8 +177,8 @@ def main(base_path=Path(''), reference=None, reorder=False, mauve_dir=Path('')):
 
 if __name__ == '__main__':
     mauve_dir = Path('C:/Program Files (x86)/Mauve 20150226')
-    base_path = Path('C:/Users/Jacob/Downloads/fusidic_data')
-    reference = base_path / 'reference_genome/MSSA476.fasta'
+    base_path = Path('C:/Users/Jacob/Downloads/fusidic_data/genomes')
+    reference = base_path / 'reference_genome/Record_49484912.fasta'
     
     os.chdir(base_path)
-    main(base_path=base_path, reference=reference, mauve_dir=mauve_dir)
+    main(base_path=base_path, mauve_dir=mauve_dir, reference=reference, reorder=True)
