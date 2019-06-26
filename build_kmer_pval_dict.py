@@ -4,16 +4,14 @@ Load files containing k-mer and associated p-value information and return
 a dataframe combining this info.
 """
 
-import os
-from pathlib import Path
-
 import pandas as pd
+from pathlib import Path
     
 def main(kmers, pvals):
-    # Load p-value info as dataframe
-    dfpvals = pd.read_csv(pvals, names=['p_score'])
-    # Load total list of kmers as series
+    # Load list of kmers as series
     kmers = pd.read_csv(kmers, names=['kmer'], squeeze=True)
+    # Load p-values as dataframe
+    dfpvals = pd.read_csv(pvals, names=['p_score'])
     
     # Checks on file integrity
     assert kmers.is_unique, "Duplicate k-mer entries encountered in file!"
@@ -35,5 +33,4 @@ if __name__ == '__main__':
     kmers = folder / 'fusidic_acid_kmers.txt'
     pvals = folder / 'fusidic_acid_pvals.txt'
     
-    os.chdir(base_path)
     main(kmers, pvals)
