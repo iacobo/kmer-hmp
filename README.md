@@ -20,19 +20,17 @@
 
 ## Data
 
-### /fusidic_data
-
-This folder contains the files:
-
-- `fusidic_acid_staph992_12_genome_subset_for_jacob_with_paths.txt`
-containing sample names, guids (new sample names), contig files, md5sums for the contig files, and phenotypes for fusidic acid resistance
-- `cipro_all_kmer_out.kmer.txt`
-list of k-mer sequences
-- `saur_992_derval_fusidic_acid_all_kmers_LMM_pvals_only.txt`
-list of p-values from the LMM analysis for the above k-mers (identified on a row-number basis)
-- the 12 contig files
-- the reference file downloaded from Entrez
-
+- `genomes`
+   - `reference_genome` 
+      - `Record_49484912.fasta` (reference genome downloaded from NCBI Entrez)
+   - `draft_genomes`
+      - `C00000814_contigs.fa`
+      - `C00000830_contigs.fa` etc
+- `static_files`
+   - `fusidic_acid_kmers.txt` (list of k-mers in draft genomes)
+   - `fusidic_acid_pvals.txt` (list of p-values associated with each k-mer)
+   - `fusidic_acid_patternIndex.txt` (1-many map of k-mer row numbers to 'pattern' of presence/absence row number in genomes)
+   - `fusidic_acid_patternKey.txt` (list of patterns of presence/absence of k-mer pattern (row) in each genome (column))
 
 ## Scripts
 
@@ -43,7 +41,7 @@ list of p-values from the LMM analysis for the above k-mers (identified on a row
 
 ### `build_kmer_pval_dict.py`
 
-3. Create dictionary of `{k-mers: p-values}` from static files
+3. Create dictionary of `{k-mer: p-value}` from static files
 
 ### `main.py`
 
