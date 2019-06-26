@@ -181,4 +181,4 @@ if __name__ == '__main__':
     reference = base_path / 'reference_genome/Record_49484912.fasta'
     
     os.chdir(base_path)
-    main(base_path=base_path, mauve_dir=mauve_dir, reference=reference, reorder=True)
+    main(base_path=base_path, mauve_dir=mauve_dir, reference=reference)
