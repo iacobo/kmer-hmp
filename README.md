@@ -20,17 +20,21 @@
 
 ## Data
 
-- `genomes`
-   - `reference_genome` 
-      - `Record_49484912.fasta` (reference genome downloaded from NCBI Entrez)
-   - `draft_genomes`
-      - `C00000814_contigs.fa`
-      - `C00000830_contigs.fa` etc
-- `static_files`
-   - `fusidic_acid_kmers.txt` (list of k-mers in draft genomes)
-   - `fusidic_acid_pvals.txt` (list of p-values associated with each k-mer)
-   - `fusidic_acid_patternIndex.txt` (1-many map of k-mer row numbers to 'pattern' of presence/absence row number in genomes)
-   - `fusidic_acid_patternKey.txt` (list of patterns of presence/absence of k-mer pattern (row) in each genome (column))
+#### Genome data
+- `genomes/reference_genome/Record_49484912.fasta`  
+(reference genome downloaded from NCBI Entrez)
+- `genomes/draft_genomes/C00000814_contigs.fa` etc 
+(draft genomes to create MSA)
+
+#### Static Files (k-mer, p-value data)
+- `static_files/fusidic_acid_kmers.txt`  
+(list of k-mers in draft genomes)
+- `static_files/fusidic_acid_pvals.txt`  
+(list of p-values associated with each k-mer)
+- `static_files/fusidic_acid_patternIndex.txt`  
+(1-many map of k-mer row numbers to 'pattern' of presence/absence row number in genomes)
+- `static_files/fusidic_acid_patternKey.txt`  
+(list of patterns of presence/absence of k-mer pattern (row) in each genome (column))
 
 ## Scripts
 
