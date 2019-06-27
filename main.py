@@ -7,7 +7,6 @@
     3. Plot the k-mer and HMP p-values 'Manhattan-plot' style
 """
 
-import os
 import datetime
 from pathlib import Path
 
@@ -55,7 +54,9 @@ def alignment2df(alignments,k,dictionary,record_dict,default=np.nan):
     for i, alignment in enumerate(alignments):
         surplus = sum(len(alignment[0]) for alignment in alignments[:i])
         for record in alignment:
-            seq_id = record.id.split("/")[0].split("\\")[-1].split(".")[0]
+            # id of format 'C:\Users\User\location\genomes\reference_genome\Seq_Id/xxx-yyy'
+            # Grabs 'Seq_Id' part
+            seq_id = Path(record.id).parent.stem
             seq_id = record_dict[seq_id]
             # Each position in sequence gets associated p-value
             for position, char in enumerate(record):
@@ -110,7 +111,7 @@ def get_hmps(df, window_size, weighted=True):
             try:
                 adjusted_hmp = hmp*(num_tests/num_tests_window)
             except ZeroDivisionError:
-                adjusted_hmp = 0
+                adjusted_hmp = np.nan
             hmps.append(adjusted_hmp)
     else:
         hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['p_val']) for start, end in zip(start_indices,end_indices)])
@@ -305,15 +306,7 @@ def sigfigs(n):
         return f'{n}'
 
 
-####################################
-## Main program
-####################################
-
 def main(k, alignments, kmer_pvalues, df=None):
-    
-    ############################################
-    ## P-Value/Position DataFrame
-    ############################################
     
     # Dictionary for sequence ids
     record_ids = sorted(list(set(record.id.split('/')[0].split('\\')[-1].split('.')[0] for alignment in alignments for record in alignment)))
@@ -329,9 +322,6 @@ def main(k, alignments, kmer_pvalues, df=None):
         t1 = datetime.datetime.now()
         print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
     
-    ############################################
-    ## HMPs, Windows, Visualisation
-    ############################################
     
     # Calculating window sizes - powers of 10 less than total sequence length
     total_sequence_length = max(df.index)[0]
@@ -346,10 +336,6 @@ def main(k, alignments, kmer_pvalues, df=None):
     plot_manhattan_plotly(df,window_sizes,record_dict_reverse)
     t1 = datetime.datetime.now()
     print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
-    
-    ###############################################################
-    ## Stats
-    ###############################################################
 
     percent_kmers_captured = 100*subset_proportion(df['kmer'], kmer_pvalues.keys())
     print(f'Proportion of k-mers present in sequences tested: {percent_kmers_captured:.2f}%')
@@ -364,13 +350,12 @@ if __name__ == '__main__':
     kmers = base_path / 'static_files/fusidic_acid_kmers.txt'
     pvals = base_path / 'static_files/fusidic_acid_pvals.txt'
     
-    os.chdir(base_path)
-    
     print('Loading k-mer/p-values dictionary...')
     t0 = datetime.datetime.now() 
     kmer_pvalues = build_kmer_pval_dict.main(kmers, pvals)
     t1 = datetime.datetime.now()
     print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
     
+    k = len(list(kmer_pvalues.keys())[0])
     alignments = build_msa_mauve.main(base_path=base_path / 'genomes', reference=reference, mauve_dir=mauve_dir)
-    df = main(31, alignments, kmer_pvalues)
+    df = main(k, alignments, kmer_pvalues)
