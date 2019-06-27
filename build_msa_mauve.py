@@ -71,7 +71,7 @@ def grab_fasta_files(location):
         files.extend(location.glob(f'*.{extension}'))
     return files
 
-def download_genome(search_term, directory, filetype='fasta', email=None):
+def download_genome(search_term, directory=Path(''), filetype='fasta', email=None):
     """Download genome from NCBI to given directory.
     Must provide email address to Entrez.
     Return location of downloaded file.
@@ -106,7 +106,7 @@ def sort_multi_alignment_by_reference(multialignment, reference='reference'):
     multialignment.sort(key = lambda x: (all([reference not in record.id for record in x]), int(x[0].id.split('-')[-1])))
 
     
-def main(base_path=Path(''), reference=None, reorder=False, mauve_dir=Path('')):
+def main(base_path=Path(''), mauve_dir=Path(''), reference=None, reorder=False):
     
     # Search criteria to download reference genome
     searches = ['staphylococcus[orgn]','MSSA476 complete genome[title]','NC_002953.3[accession]']
@@ -181,4 +181,4 @@ if __name__ == '__main__':
     reference = base_path / 'reference_genome/Record_49484912.fasta'
     
     os.chdir(base_path)
-    main(base_path=base_path, mauve_dir=mauve_dir, reference=reference)
+    alignments = main(base_path=base_path, mauve_dir=mauve_dir, reference=reference)
