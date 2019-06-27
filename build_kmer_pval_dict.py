@@ -23,14 +23,14 @@ def main(kmers, pvals):
     
     # Set "key" column as index and convert to dict
     dfpvals = dfpvals.set_index('kmer')
-    kmer_pvalues = dfpvals['p_score'].to_dict()
+    kmer_pvalues = dfpvals['pval'].to_dict()
    
     return kmer_pvalues
 
 if __name__ == '__main__':
     # File locations
-    folder = Path('C:/Users/Jacob/Downloads/fusidic_data')
+    folder = Path('C:/Users/Jacob/Downloads/fusidic_data/static_files')
     kmers = folder / 'fusidic_acid_kmers.txt'
     pvals = folder / 'fusidic_acid_pvals.txt'
     
-    main(kmers, pvals)
+    kmer_pvalues = main(kmers, pvals)
