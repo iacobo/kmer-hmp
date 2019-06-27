@@ -8,15 +8,16 @@
 
 #### Steps:
 
-1.  Choose twelve S. aureus genomes from a [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance. Select files for:
-    - contigs from each of the twelve genomes
-    - list of k-mers from the analysis of all ~1000 genomes
+1. Choose* twelve S. aureus genomes from a [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance. Select files for:
+    - each of the twelve genomes (`.fa` files)
+    - list of k-mers from the analysis of all 992 genomes
     - list of associated p-values for these k-mers
-2. Reorder the contigs on a genome-by-genome basis with [Mauve](http://darlinglab.org/mauve/mauve.html) with trespect to the [MSSA476 reference genome](https://www.ncbi.nlm.nih.gov/nuccore/BX571857.1).
+2. Reorder the contigs on a genome-by-genome basis with [Mauve](http://darlinglab.org/mauve/mauve.html) with respect to the [MSSA476 reference genome](https://www.ncbi.nlm.nih.gov/nuccore/BX571857.1).
 3. Use Mauve to align the twelve genomes into an MSA.
 4. K-merize (into 31-mers) the MSA and identify the p-value corresponding to each kmer in the MSA.
 5. Compute HMPs for overlapping sliding windows at different scales, e.g. 10bp, 100bp, 1kb, 10kb, 100kb, 1Mb. Suggestion: stagger each sliding window by about 50% of its length.
 
+<sup>\* Genomes chosen by script [`set_cover.py`](https://github.com/ja-ox/kmer-hmp/tree/master/set-cover) which selects the smallest subset of genomes containing > 80% of distinct k-mers present in the complete set (992 genomes).</sup>
 
 ## Data
 
