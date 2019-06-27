@@ -309,7 +309,7 @@ def sigfigs(n):
 def main(k, alignments, kmer_pvalues, df=None):
     
     # Dictionary for sequence ids
-    record_ids = sorted(list(set(record.id.split('/')[0].split('\\')[-1].split('.')[0] for alignment in alignments for record in alignment)))
+    record_ids = sorted(list(set(Path(record.id).parent.stem for alignment in alignments for record in alignment)))
     record_dict = {record_id:i for i, record_id in enumerate(record_ids)}
     record_dict_reverse = {i:record_id for i, record_id in enumerate(record_ids)}
     
