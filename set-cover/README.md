@@ -6,13 +6,13 @@ Implementation: greedy algorithm for solving [Set Cover problem](https://en.wiki
 
 > Inapproximability results show that the greedy algorithm is essentially the best-possible polynomial time approximation algorithm for set cover up to lower order terms (see Inapproximability results below), under plausible complexity assumptions.   
 
-Current best (limited by RAM to only considering ~450/992 genomes in any one iteration):
+Since we are dealing with k-mer **pattern** files, this becomes a **weighted** set cover problem, where the weight of each pattern is the number of k-mers which share that pattern.
 
-- 01 genomes: 56.7%
-- 04 genomes: 80.2%
-- 11 genomes: 90.3%
-- 30 genomes: 95.1%
-
-Considering slice of length 450: `genomes[406:856]`
+- 01 genomes: 19.2%
+- 02 genomes: 29.2%
+- 05 genomes: 43.0%
+- 10 genomes: 54.7%
+- 20 genomes: 66.9%
+- 50 genomes: 79.9%
 
 ![Graph of coverage vs number of genomes](/images/set_cover_graph.png)
