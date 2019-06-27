@@ -11,7 +11,7 @@ def main(kmers, pvals):
     # Load list of kmers as series
     kmers = pd.read_csv(kmers, names=['kmer'], squeeze=True)
     # Load p-values as dataframe
-    dfpvals = pd.read_csv(pvals, names=['p_score'])
+    dfpvals = pd.read_csv(pvals, names=['pval'])
     
     # Checks on file integrity
     assert kmers.is_unique, "Duplicate k-mer entries encountered in file!"
