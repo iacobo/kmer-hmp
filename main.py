@@ -16,9 +16,6 @@ from scipy.stats import hmean
 
 import plotly.plotly as py
 import plotly.graph_objs as go
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-import seaborn as sns; sns.set()
 
 import build_msa_mauve
 import build_kmer_pval_dict
@@ -31,21 +28,28 @@ def subset_proportion(subset, completeset):
     """
     subset = set(subset)
     completeset = set(completeset)
-    
     len_intersection = len(subset.intersection(completeset))
+    
     assert len_intersection == len(subset), "First element is not a subset of second element."
     
     return len_intersection/len(completeset)
 
 def alignment2df(alignments,k,dictionary,record_dict,default=np.nan):
-    """Create DataFrame from multi-alignment. Dissects alignment to produce
-    k-mers and given a dictionary of k-mer:p-value creates a row in the dataframe
-    for each position in each sequence with an associated p-value (with respect 
-    to the k-mer whose leftmost basepair starts at that position).
+    """Create DataFrame from multi-alignment.
     
-    Gap characters are ignored for generating k-mers.
-    
-    No p-values are associated to positions which are a gap character.
+    Given MSA and dictionary of form {k-mer:p-value} create df of form:
+        
+                                                                         kmer     p_val
+    absolute_pos alignment sequence position                                           
+    0            0         0        0        TAATCGGACCTGGTAACCGCTTTCCACATGC  0.876878
+                           1        0        TAATCGGACCCGGTAACCGCTTTCCACATGC  0.840357
+                           2        0        TAATCGGACCTGGTAACCGCTTCCCACATGC  0.897792
+                           3        0        TAATCGGACCTGGTAACCGCTTCCCACATGC  0.897792
+    1            0         0        1        AATAGGACCTGGTAACCGCTTTCCACATGCA  0.792824
+                           1        1        AATAGGACCTGGTAACCGCTTTCCACATGCA  0.792824
+                           2        1        AATCGGACCTGGTAACCGCTTCCCACATGCA  0.897792
+                           4        1        AATCGGACCTGGTAACCGCTTTCCACATGCA  0.876878
+                           5        1        AATAGGACCTGGTAACCGCTTTCCACATGCA  0.792824
     """
     columns = ['kmer','p_val','position','absolute_pos','alignment','sequence']
     
@@ -60,7 +64,7 @@ def alignment2df(alignments,k,dictionary,record_dict,default=np.nan):
             seq_id = record_dict[seq_id]
             # Each position in sequence gets associated p-value
             for position, char in enumerate(record):
-                # Position determined by leftmost value of k-mer
+                # Fetch k-mer starting at this position
                 # If no k-mer starts here (i.e. this pos is a gap char), no value given
                 if char != '-':
                     kmer = record[position:].seq.ungap(gap='-')[:k].upper()
@@ -81,8 +85,8 @@ def alignment2df(alignments,k,dictionary,record_dict,default=np.nan):
 
 def get_hmps(df, window_size, weighted=True):
     """
-    Create array of Harmonic Mean p-values for each sliding window across
-    the dataframe of given window size.
+    Create array of Harmonic Mean p-values for sliding windows across
+    the dataframe.
     
     If `weighted`, multiplies each value by a factor of:
         
@@ -91,13 +95,13 @@ def get_hmps(df, window_size, weighted=True):
     hmps = []
     stagger = int(window_size/2)
     
-    # Grab length of concatenated alignments (largest absolute position, + 1 for 0 indexing)
-    length = max(df.index)[0]+1
+    # Grab length of concatenated alignments (largest absolute position)
     first = min(df.index)[0]
+    last = max(df.index)[0]
     num_tests = len(df)
     
     # Generate start and end indices for each sliding window
-    start_indices = np.array(range(first,length,stagger))
+    start_indices = np.array(range(first,last+1,stagger))
     end_indices = start_indices + window_size
     
     # Takes slice of absolute positions (index 0)
@@ -116,97 +120,6 @@ def get_hmps(df, window_size, weighted=True):
     else:
         hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['p_val']) for start, end in zip(start_indices,end_indices)])
     return hmps
-
-#############################################################
-## Visualisation functions
-#############################################################
-
-def remove_duplicate_legends(ax=None):
-    """Remove duplicate labels on a matplotlib legend.
-    """
-    ax = ax or plt.gca()
-    
-    handles, labels = ax.get_legend_handles_labels()
-    newLabels, newHandles = [], []
-    for handle, label in zip(handles, labels):
-        if label not in newLabels:
-            newLabels.append(label)
-            newHandles.append(handle)
-    
-    ax.legend(newHandles, newLabels)
-
-def plot_multiple_hmps(df, window_sizes, ax=None):
-    """ Call plot_hmps for multiple values of window_size.
-    Automatically generate distinct colours for different plots.
-    """
-    
-    for i, window_size in enumerate(window_sizes):
-        print(f"Generating visualisation for window size {window_size}bp...")
-        t0 = datetime.datetime.now() 
-        
-        # Calculate HMP's for each window size
-        hmps = get_hmps(df,window_size)
-        color = plt.get_cmap('jet')(i/len(window_sizes))
-        plot_hmps(hmps,window_size,color,ax)
-        t1 = datetime.datetime.now()
-        print(f"Total time: {(t1-t0).total_seconds():.2f}s.\n")
-    
-    # Plot k-mers Manhattan-plot style (scatter graph)
-    print(f"Generating Manhattan-plot...")
-    t0 = datetime.datetime.now()
-    plot_manhattan(df, ax=ax)
-    t1 = datetime.datetime.now()
-    print(f"Total time: {(t1-t0).total_seconds():.2f}s.\n")
-    
-
-def plot_hmps(hmps, window_size, color, ax=None):
-    """Plot p-values of sliding windows vs window position across sequence.
-    Optionall also plot 'Manhattan Plot' of individual kmer p-values vs
-    kmer position in multi-sequence.
-    """
-    ax = ax or plt.gca()
-    stagger = int(window_size/2)
-    
-    # Sliding windows plot
-    for i, hmp in enumerate(hmps):
-        ax.plot([i*stagger, i*stagger+window_size], 
-                [-np.log10(hmp), -np.log10(hmp)], 
-                c = color, 
-                label = f'{window_size}bp')
-    
-    remove_duplicate_legends()
-    ax.set_xlabel('Genome position')
-    ax.set_ylabel(r'$-\log_{10}($Adjusted $p$-value$)$')
-
-
-def plot_manhattan(df, alpha=0.05, thresh=0.001, ax=None, millions=True):
-    """Plot Manhattan-plot of k-mer p-values.
-    """
-    ax = ax or plt.gca()
-    
-    num_tests = len(df)
-    
-    # Grab bottom thresh% values by p-value (for plotting purposes)
-    thresh_amount = int(thresh*num_tests)
-    df_small = df.nsmallest(thresh_amount, 'p_val')
-    
-    # Alternate plot colour for each alignment
-    colors = df_small.index.get_level_values('alignment') % 2
-    colors = cm.Paired(colors)
-    
-    # Adjust p-values by weight (1/len(df))**(-1) = len(df)
-    # To enable comparison with alpha
-    adjusted_pvals = df_small['p_val']*num_tests
-    
-    ax.scatter(df_small.index.to_frame()['absolute_pos'], -np.log10(adjusted_pvals), edgecolors=colors, facecolors='none')
-    # Plot alpha value line
-    if alpha:
-        ax.plot([min(df.index)[0], max(df.index)[0]], [-np.log10(alpha), -np.log10(alpha)], 'r', ls='--')
-    
-    # Plot x-ticks as XM instead of X000000 etc
-    if millions:
-        xlabels = ['{:,.2f}M'.format(x) for x in ax.get_xticks()/1000000]
-        ax.set_xticklabels(xlabels)
 
 
 def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thresh=0.01):
@@ -230,13 +143,12 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
     # Adjusted alpha (Bonferroni) for comparison
     adjusted_alpha = alpha/len(df)
     y = -np.log10(adjusted_alpha)
-    alpha_trace = go.Scatter(
-                x = [min(df.index)[0], max(df.index)[0]+1],
-                y = [y, y],
-                name = 'alpha',
-                mode = 'lines',
-                line = dict(color = '#d62728',
-                            dash = 'dash'))
+    alpha_trace = go.Scatter(x = [min(df.index)[0], max(df.index)[0]+1],
+                             y = [y, y],
+                             name = 'alpha',
+                             mode = 'lines',
+                             line = dict(color = '#d62728',
+                                         dash = 'dash'))
     
     data = [alpha_trace]
     
@@ -244,7 +156,7 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
     kmers = go.Scattergl(x = df_temp.index.get_level_values('absolute_pos'),
                          y = -np.log10(adjusted_pvals),
                          # Add kmer and sequence name text info
-                         name = '31-mer',
+                         name = f'{k}-mer',
                          text = df_temp['kmer'] + '<br>' + df_temp.index.get_level_values('sequence').map(record_dict_reverse),
                          mode = 'markers',
                          opacity = 0.5,
@@ -277,12 +189,11 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
             # Hide duplicate legends
             showlegend = False
     
-    layout = dict(title='31-mer p-values for multi-alignment of Staph a.',
+    layout = dict(title=f'{k}-mer p-values for multi-alignment of Staph a.',
                   xaxis=dict(title='Genome position'),
                   yaxis=dict(title='-log10(adjusted p-val)'))
     
     fig = dict(data=data, layout=layout)
-    
     py.plot(fig, layout=layout, filename='kmer-test', auto_open=True)
 
 def sigfigs(n):
@@ -306,24 +217,24 @@ def sigfigs(n):
         return f'{n}'
 
 
-def main(k, alignments, kmer_pvalues, df=None):
+def main(k, alignments, kmer_pvalues):
     
     # Dictionary for sequence ids
     record_ids = sorted(list(set(Path(record.id).parent.stem for alignment in alignments for record in alignment)))
     record_dict = {record_id:i for i, record_id in enumerate(record_ids)}
     record_dict_reverse = {i:record_id for i, record_id in enumerate(record_ids)}
     
-    if df is None:
-        # Create DF
-        print('Converting alignment file to DataFrame with p-value/position as row...')
-        t0 = datetime.datetime.now() 
-        df = alignment2df(alignments,k,kmer_pvalues,record_dict)
-        print('Dataframe successfully created.')
-        t1 = datetime.datetime.now()
-        print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
+    # Create DF
+    print('Converting alignment file to DataFrame with p-value/position as row...')
+    t0 = datetime.datetime.now() 
+    df = alignment2df(alignments,k,kmer_pvalues,record_dict)
+    print('Dataframe successfully created.')
+    t1 = datetime.datetime.now()
+    print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
     
+    print(df.head())
     
-    # Calculating window sizes - powers of 10 less than total sequence length
+    # Calculate window sizes - powers of 10 less than total sequence length
     total_sequence_length = max(df.index)[0]
     upper_exp = int(np.log10(total_sequence_length))+1
     lower_exp = 5
