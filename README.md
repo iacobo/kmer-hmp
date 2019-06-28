@@ -25,7 +25,7 @@
 - `genomes/reference_genome/Record_49484912.fasta`    
 reference genome downloaded from NCBI Entrez
 - `genomes/draft_genomes/C00000814_contigs.fa`    
-- `genomes/draft_genomes/C00000830_contigs.fa` etc   
+  `genomes/draft_genomes/C00000830_contigs.fa` etc   
 draft genomes to create MSA
 
 #### Static Files (k-mer, p-value data)
