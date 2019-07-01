@@ -106,7 +106,7 @@ def sort_multi_alignment_by_reference(multialignment, reference='reference'):
     multialignment.sort(key = lambda x: (all([reference not in record.id for record in x]), int(x[0].id.split('-')[-1])))
 
     
-def main(base_path=Path(''), mauve_dir=Path(''), reference=None, reorder=False):
+def main(base_path=Path(''), mauve_dir=Path(''), drafts_dir=Path(''), reference=None, reorder=False):
     
     # Search criteria to download reference genome
     searches = ['staphylococcus[orgn]','MSSA476 complete genome[title]','NC_002953.3[accession]']
@@ -124,8 +124,7 @@ def main(base_path=Path(''), mauve_dir=Path(''), reference=None, reorder=False):
     java = Path('C:/Program Files (x86)/Common Files/Oracle/Java/javapath_target_10534109/java.exe')
     mauve = Path('C:/Program Files (x86)/Mauve 20150226/Mauve.jar')
     
-    # MSA file to reorder contigs of
-    drafts_dir = base_path / 'draft_genomes'
+    # MSA output paths
     results_dir = base_path / 'ordered_contigs'
     alignment_filename = base_path / 'alignment/alignment.xmfa'
     # Create folders
@@ -179,6 +178,7 @@ if __name__ == '__main__':
     mauve_dir = Path('C:/Program Files (x86)/Mauve 20150226')
     base_path = Path('C:/Users/Jacob/Downloads/fusidic_data/genomes')
     reference = base_path / 'reference_genome/Record_49484912.fasta'
+    drafts_dir = base_path / 'draft_genomes'
     
     os.chdir(base_path)
-    alignments = main(base_path=base_path, mauve_dir=mauve_dir, reference=reference)
+    alignments = main(base_path=base_path, mauve_dir=mauve_dir, drafts_dir=drafts_dir, reference=reference)
