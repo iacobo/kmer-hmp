@@ -253,6 +253,7 @@ if __name__ == '__main__':
     mauve_dir = Path('C:/Program Files (x86)/Mauve 20150226')
     base_path = Path('C:/Users/Jacob/Downloads/fusidic_data')
     reference = base_path / 'genomes/reference_genome/Record_49484912.fasta'
+    drafts_dir = base_path / 'genomes/draft_genomes'
     kmers = base_path / 'static_files/fusidic_acid_kmers.txt'
     pvals = base_path / 'static_files/fusidic_acid_pvals.txt'
     
@@ -263,5 +264,5 @@ if __name__ == '__main__':
     print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
     
     k = len(list(kmer_pvalues.keys())[0])
-    alignments = build_msa_mauve.main(base_path=base_path / 'genomes', reference=reference, mauve_dir=mauve_dir)
+    alignments = build_msa_mauve.main(base_path=base_path / 'genomes', reference=reference, drafts_dir=drafts_dir, mauve_dir=mauve_dir)
     df = main(k, alignments, kmer_pvalues)
