@@ -16,6 +16,7 @@
 3. Use Mauve to align the twelve genomes into an MSA.
 4. K-merize (into 31-mers) the MSA and identify the p-value corresponding to each kmer in the MSA.
 5. Compute HMPs for overlapping sliding windows at different scales, e.g. 10bp, 100bp, 1kb, 10kb, 100kb, 1Mb. Suggestion: stagger each sliding window by about 50% of its length.
+    - HMP generated from weighted Harmonic Mean of the p-values of the k-mers present in each window.
 
 <sup>\* Genomes chosen by script [`set_cover.py`](https://github.com/ja-ox/kmer-hmp/tree/master/set-cover) which selects the smallest subset of genomes containing > 80% of distinct k-mers present in the complete set (992 genomes).</sup>
 
@@ -141,3 +142,19 @@ In these instances, if a window overlaps an alignment boundary, k-mers are taken
 >
 >The file Mauve.jar is part of the Mauve distribution. On windows systems it can usually be found in `C:\Program Files\Mauve X\Mauve.jar` where `X` is the version of Mauve. On Mac OS X it is located inside the Mauve application. For example, if Mauve has been placed in the OS X applications folder, Mauve.jar can be found at `/Applications/Mauve.app/Contents/Resources/Java/Mauve.jar`. 
 >On Linux, `Mauve.jar` is simply at the top level of the `tar.gz` archive. In the above example command, it will be necessary to specify the full path to the `Mauve.jar` file.
+
+# Tutorial
+
+1. Install [Mauve Multiple Genome Alignment](http://darlinglab.org/mauve/mauve.html)
+2. Edit script `main.py` changing the values:
+
+    if __name__ == '__main__':
+        mauve_dir = Path('C:/Program Files (x86)/Mauve 20150226') # Path where Mauve is installed
+        base_path = Path('C:/Users/User/project') # Path where your data is saved
+        reference = base_path / 'genomes/reference_genome/reference_genome.fasta' # Change to `None` if you wish to automatically download genome from NCBI
+        kmers = base_path / 'static_files/list_of_kmers.txt' # List of k-mers present in genomes
+        pvals = base_path / 'static_files/kmers_pvals.txt' # List of p-values associated with above k-mers
+        
+3. Save your draft genome files to align to the directory `C:/Users/User/project/genomes/draft_genomes`
+4. If plotting Manhattan Plot, must ensure plotly lbrary initially configured with account.
+5. Run `main.py`
