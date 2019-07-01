@@ -39,19 +39,16 @@ def alignment2df(alignments,k,dictionary,record_dict,default=np.nan):
     
     Given MSA and dictionary of form {k-mer:p-value} create df of form:
         
-                                                                         kmer     p_val
+                                                      kmer      pval
     absolute_pos alignment sequence position                                           
-    0            0         0        0        TAATCGGACCTGGTAACCGCTTTCCACATGC  0.876878
-                           1        0        TAATCGGACCCGGTAACCGCTTTCCACATGC  0.840357
-                           2        0        TAATCGGACCTGGTAACCGCTTCCCACATGC  0.897792
-                           3        0        TAATCGGACCTGGTAACCGCTTCCCACATGC  0.897792
-    1            0         0        1        AATAGGACCTGGTAACCGCTTTCCACATGCA  0.792824
-                           1        1        AATAGGACCTGGTAACCGCTTTCCACATGCA  0.792824
-                           2        1        AATCGGACCTGGTAACCGCTTCCCACATGCA  0.897792
-                           4        1        AATCGGACCTGGTAACCGCTTTCCACATGCA  0.876878
-                           5        1        AATAGGACCTGGTAACCGCTTTCCACATGCA  0.792824
+    0            0         0        0        TAATCGGACCTGG  0.876878
+                           1        0        TAATCGGACCCGG  0.840357
+    1            0         0        1        AATAGGACCTGGT  0.792824
+                           2        1        AATCGGACCTGGT  0.897792
+                           3        1        AATCGGACCTGGT  0.876878
     """
-    columns = ['kmer','p_val','position','absolute_pos','alignment','sequence']
+    
+    columns = ['kmer','pval','position','absolute_pos','alignment','sequence']
     
     temp = []
     
@@ -108,7 +105,7 @@ def get_hmps(df, window_size, weighted=True):
     idx = pd.IndexSlice
     if weighted:
         for start, end in zip(start_indices,end_indices):
-            df_window = df.loc[idx[start:end,:,:,:],:]['p_val']
+            df_window = df.loc[idx[start:end,:,:,:],:]['pval']
             num_tests_window = len(df_window)
             hmp = hmean(df_window)
             # Adjusted by factor of weight**(-1)
@@ -118,7 +115,7 @@ def get_hmps(df, window_size, weighted=True):
                 adjusted_hmp = np.nan
             hmps.append(adjusted_hmp)
     else:
-        hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['p_val']) for start, end in zip(start_indices,end_indices)])
+        hmps = np.array([hmean(df.loc[idx[start:end,:,:,:],:]['pval']) for start, end in zip(start_indices,end_indices)])
     return hmps
 
 
@@ -129,7 +126,7 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
     num_tests = len(df)
     # Grab bottom thresh% values by p-value (for plotting purposes)
     thresh_amount = int(thresh*num_tests)
-    df_temp = df.nsmallest(thresh_amount, 'p_val')
+    df_temp = df.nsmallest(thresh_amount, 'pval')
     
     # Alternate colours for alignment blocks
     alignment_colors = df_temp.index.get_level_values('alignment') % 2
@@ -138,7 +135,7 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
     
     # Adjust p-values by weight (1/len(df))**(-1) = len(df)
     # To enable comparison with alpha
-    adjusted_pvals = df_temp['p_val']*num_tests
+    adjusted_pvals = df_temp['pval']*num_tests
     
     # Adjusted alpha (Bonferroni) for comparison
     adjusted_alpha = alpha/len(df)
@@ -171,10 +168,10 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
     
     # HMP windows over graph
     for j, window_size in enumerate(window_sizes):
-        hmps = get_hmps(df,window_size)
         stagger = int(window_size/2)
+        hmps = get_hmps(df,window_size)
         name = f'{sigfigs(window_size)} bp'
-        # Shift necessary if not starting at basepair 0
+        # Shift necessary if df doesn't start at basepair 0
         shift = min(df.index)[0]
         showlegend = True
         for i, hmp in enumerate(hmps):
@@ -198,9 +195,9 @@ def plot_manhattan_plotly(df, window_sizes, record_dict_reverse, alpha=0.05, thr
 
 def sigfigs(n):
     """Return string formatted integer with K or M for thousands, millions
-    sig figs.
-    
-    E.g. 1000 > 1K
+    sig figs e.g:
+
+    1000    > 1K
     5000000 > 5M
     """
     if n >= 1000000: 
@@ -231,8 +228,6 @@ def main(k, alignments, kmer_pvalues):
     print('Dataframe successfully created.')
     t1 = datetime.datetime.now()
     print(f'Total time: {(t1-t0).total_seconds():.2f}s.\n')
-    
-    print(df.head())
     
     # Calculate window sizes - powers of 10 less than total sequence length
     total_sequence_length = max(df.index)[0]
