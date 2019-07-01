@@ -47,6 +47,7 @@ def main(patterns, pattern_index=None, weighted=True, proportion=0.8):
     # Weighted version: pat weighted by number of k-mers sharing that pattern
     if weighted:
         pattern_index = pd.read_csv(pattern_index, names=['i'])
+        # Calculate number of k-mers (rows) sharing each pattern
         weights = pattern_index['i'].value_counts().sort_index()
         
         assert len(df) == len(weights), "Index file does not match patterns file!"
