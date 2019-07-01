@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    1. Determine smallest subset of genomes required to encapsulate >= x% of all
-       k-mers present in complete genome set.
-       
-Effectively a set covering problem.
+Determine smallest subset of genomes required to encapsulate > 80% of distinct
+k-mers present in complete genome set.
 
 Implementation: Greedy algorithm. 
                 Not guaranteed minimum, but at most factor of log(n) off.
@@ -40,10 +38,11 @@ def plot_curve(kmer_cumcounts, n_kmers, n_genomes, proportion):
 
 def main(patterns, pattern_index=None, weighted=True, proportion=0.8):
     # Load Patterns file as DataFrame
-    # Row = k-mer pattern
-    # Col = genome presence/absence in patterns
+    # Row = k-mer (pattern of presence/absence)
+    # Col = genome
     n_genomes = len_first_line(patterns)
     df = pd.read_fwf(patterns, header=None, widths = [1]*n_genomes)
+    print('DataFrame loaded.')
         
     # Weighted version: pat weighted by number of k-mers sharing that pattern
     if weighted:
@@ -56,10 +55,10 @@ def main(patterns, pattern_index=None, weighted=True, proportion=0.8):
         print("Weights applied.")
     
     # Transpose dataframe to get:
-    # Row = genome presence/absence in patterns
-    # Col = k-mer pattern
+    # Row = genome
+    # Col = k-mer (pattern of presence/absence)
     df = df.T
-    print('DataFrame loaded.')
+    print('DataFrame transposed.')
     
     if weighted:
         n_kmers = len(pattern_index)
