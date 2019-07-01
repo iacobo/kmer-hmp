@@ -152,9 +152,9 @@ In these instances, if a window overlaps an alignment boundary, k-mers are taken
             mauve_dir = Path('C:/Program Files (x86)/Mauve 20150226') # Path where Mauve is installed
             base_path = Path('C:/Users/User/project') # Path where your data is saved
             reference = base_path / 'genomes/reference_genome/reference_genome.fasta' # Change to `None` if you wish to automatically download genome from NCBI
+            drafts_dir = base_path / 'genomes/draft_genomes' # Path where draft genomes are saved
             kmers = base_path / 'static_files/list_of_kmers.txt' # List of k-mers present in genomes
             pvals = base_path / 'static_files/kmers_pvals.txt' # List of p-values associated with above k-mers
 
-3. Save your draft genome files to align to the directory `C:/Users/User/project/genomes/draft_genomes`
-4. If plotting Manhattan Plot, must ensure plotly lbrary initially configured with account.
-5. Run `main.py`
+3. If plotting Manhattan Plot, must ensure plotly lbrary initially configured with account.
+4. Run `main.py`
