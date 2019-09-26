@@ -8,7 +8,7 @@
 
 #### Steps:
 
-1. Choose* twelve S. aureus genomes from a [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance. Select files for:
+1. Choose* set of genomes from GWAS to study. Select files for:
     - each of the twelve genomes (`.fa` files)
     - list of k-mers from the analysis of all 992 genomes
     - list of associated p-values for these k-mers
@@ -22,9 +22,15 @@
 
 ## Data
 
+Two studies considered:
+  1. twelve S. aureus genomes from [previous analysis](http://sro.sussex.ac.uk/id/eprint/63252/1/Earle%20SG%202016.pdf) (main example of paper) conducted into fusidic acid resistance (FUC).
+  2. 200 E. coli genomes from previous study conducted into cefepime resistance (FEP).
+  
+Below are the files (and expected relative file locations) required by the python scripts:
+
 #### Genomes
 - `genomes/reference_genome/Record_49484912.fasta`    
-reference genome downloaded from NCBI Entrez
+reference genome (downloaded from NCBI Entrez)
 - `genomes/draft_genomes/C00000814_contigs.fa`    
   `genomes/draft_genomes/C00000830_contigs.fa` etc   
 draft genomes to create MSA
