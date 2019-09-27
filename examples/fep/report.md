@@ -9,6 +9,8 @@
 - Method tested on FUC resistant S. Aureus from study ...... Pipeline code written.
 - Chosen FEP resistant E. Coli from study ...... for actual analysis since it appears to match criteria above. I.e. consider the SNP Manhattan plot below:
 
+![SNP manhattan plot](/examples/fep/image_2000_2.png)
+
 - Blue dots = SNP adjusted p-values below threshold
 - Red dots = SNP adjusted p-values above threshold
 - Cyan bars = HMP values below threshold (2kbp)
@@ -17,8 +19,8 @@
 
 ## 2. K-mer analysis
 
-Running into issues when testing code on k-mer data from study. Data appears to have significant 'banding' obscuring peaks of significance:
+Using a set of 4-12 genomes from set of ~200, and the subset of 400,000 k-mers for which the p-values had been calculated in the GWAS, ran previous code from FUC project to produce the following plot:
 
-Unsure what is causing such large disparity between SNP and k-mer based plots. Further investigation needed. Have tested using `p_score` and `p_lrt` values for p-values in data.
+![k-mer manhattan plot](/examples/fep/Figure_2.png)
 
-Possible reason: p-values are not matched to correct k-mer in initial dictionary.
+**Todo:** create HMP's, plot alpha, test thresholds.
